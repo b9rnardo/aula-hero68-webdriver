@@ -1,0 +1,3782 @@
+{
+ "source": "app-CPb3bToC.js:17128-17373 (Si), 16836-16945 (l4 macro event keys), en-us locale S2e at 5938",
+ "key_value_encoding": {
+  "size": "4 bytes, big-endian, written as \"0xTTAABBCC\" strings in the app",
+  "byte0_type": {
+   "0x00": "keyboard: byte1 = HID modifier bitmask, byte2/byte3 = HID keyboard usage(s) (single key uses byte3; combos may use byte2 and/or byte3)",
+   "0x01": "mouse button (byte1 = button id, bytes2-3 = 0x0100)",
+   "0x02": "consumer control, bytes2-3 = 16-bit HID Consumer usage",
+   "0x03": "macro reference (never stored as a 32-bit value; see macro_binding)",
+   "0x05": "mouse DPI (mouse devices only; hidden for keyboards)",
+   "0x07": "system/OS mode (0x0700000e Win mode, 0x0700000f Mac mode)",
+   "0x0a": "mouse sniper button (mouse only)",
+   "0x0d": "Fn key (0x0d000000 Fn, 0x0d010000 Fn1)"
+  },
+  "special_values": {
+   "0x00000000": "empty / none",
+   "0xffffffff": "shown as \"??\" (unknown/unset) on read"
+  },
+  "wire_record_per_key": "[pos_hi, pos_lo, b0, b1, b2, b3] (6 bytes) inside a set-keys report; up to 9 keys per report (sync_keys O1(o,9)) – app-CPb3bToC.js:110333-110376, 110544-110551"
+ },
+ "modifier_bits": {
+  "0x01": "L_Ctrl",
+  "0x02": "L_Shift",
+  "0x04": "L_Alt",
+  "0x08": "L_WIN",
+  "0x10": "R_Ctrl",
+  "0x20": "R_Shift",
+  "0x40": "R_Alt",
+  "0x80": "R_WIN"
+ },
+ "macro_binding": {
+  "wire_record": "[pos_hi, pos_lo, 0x03, mode, repeat_count, macro_index]",
+  "mode_values": {
+   "1": "\"circle\" – loop the macro N times (label \"cycle\")",
+   "2": "\"button\" – UI label \"repeat\": run until another key is pressed",
+   "4": "\"repeat\" – UI label \"button\": run while held, stop on release"
+  },
+  "note": "UI labels for \"button\"/\"repeat\" are swapped relative to value names (chunk-DOvWlFxe.js:2188-2192). macro_index = index of macro in the uploaded macro table. Max 150 events per macro (chunk-DOvWlFxe.js:2349).",
+  "macro_event_encoding": "4 bytes per event: [ (updown_code & 0xF0) | ((delay_ms>>16)&0x0F), (delay_ms>>8)&0xFF, delay_ms&0xFF, key_value ] (app-CPb3bToC.js:110462-110480)",
+  "macro_table_layout": "header: per macro 4 bytes [offset_lo, offset_hi, len_lo, len_hi] (offset starts at 4*count); body per macro: [name_len, utf8 name..., events...]; sent in 56-byte chunks (app-CPb3bToC.js:110481-110535)"
+ },
+ "macro_event_keys": [
+  {
+   "name": "MouseKey0",
+   "code": 1,
+   "down": 32,
+   "up": 160,
+   "class": "mouse_button_bitmask"
+  },
+  {
+   "name": "MouseKey1",
+   "code": 4,
+   "down": 32,
+   "up": 160,
+   "class": "mouse_button_bitmask"
+  },
+  {
+   "name": "MouseKey2",
+   "code": 2,
+   "down": 32,
+   "up": 160,
+   "class": "mouse_button_bitmask"
+  },
+  {
+   "name": "MouseKey3",
+   "code": 8,
+   "down": 32,
+   "up": 160,
+   "class": "mouse_button_bitmask"
+  },
+  {
+   "name": "MouseKey4",
+   "code": 16,
+   "down": 32,
+   "up": 160,
+   "class": "mouse_button_bitmask"
+  },
+  {
+   "name": "Escape",
+   "code": 41,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F1",
+   "code": 58,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F2",
+   "code": 59,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F3",
+   "code": 60,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F4",
+   "code": 61,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F5",
+   "code": 62,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F6",
+   "code": 63,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F7",
+   "code": 64,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F8",
+   "code": 65,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F9",
+   "code": 66,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F10",
+   "code": 67,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F11",
+   "code": 68,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "F12",
+   "code": 69,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Delete",
+   "code": 76,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Home",
+   "code": 74,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "End",
+   "code": 77,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "PageUp",
+   "code": 75,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "PageDown",
+   "code": 78,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Backquote",
+   "code": 53,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit1",
+   "code": 30,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit2",
+   "code": 31,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit3",
+   "code": 32,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit4",
+   "code": 33,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit5",
+   "code": 34,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit6",
+   "code": 35,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit7",
+   "code": 36,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit8",
+   "code": 37,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit9",
+   "code": 38,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Digit0",
+   "code": 39,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Minus",
+   "code": 45,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Equal",
+   "code": 46,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Backspace",
+   "code": 42,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumLock",
+   "code": 83,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumpadDivide",
+   "code": 84,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumpadMultiply",
+   "code": 85,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumpadSubtract",
+   "code": 86,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Tab",
+   "code": 43,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyQ",
+   "code": 20,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyW",
+   "code": 26,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyE",
+   "code": 8,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyR",
+   "code": 21,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyT",
+   "code": 23,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyY",
+   "code": 28,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyU",
+   "code": 24,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyI",
+   "code": 12,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyO",
+   "code": 18,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyP",
+   "code": 19,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "BracketLeft",
+   "code": 47,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "BracketRight",
+   "code": 48,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Backslash",
+   "code": 49,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad7",
+   "code": 95,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad8",
+   "code": 96,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad9",
+   "code": 97,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumpadAdd",
+   "code": 87,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "CapsLock",
+   "code": 57,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyA",
+   "code": 4,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyS",
+   "code": 22,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyD",
+   "code": 7,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyF",
+   "code": 9,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyG",
+   "code": 10,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyH",
+   "code": 11,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyJ",
+   "code": 13,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyK",
+   "code": 14,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyL",
+   "code": 15,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Semicolon",
+   "code": 51,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Quote",
+   "code": 52,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Enter",
+   "code": 40,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad4",
+   "code": 92,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad5",
+   "code": 93,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad6",
+   "code": 94,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "ShiftLeft",
+   "code": 225,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "KeyZ",
+   "code": 29,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyX",
+   "code": 27,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyC",
+   "code": 6,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyV",
+   "code": 25,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyB",
+   "code": 5,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyN",
+   "code": 17,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "KeyM",
+   "code": 16,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Comma",
+   "code": 54,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Period",
+   "code": 55,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Slash",
+   "code": 56,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "PrintScreen",
+   "code": 70,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "ScrollLock",
+   "code": 71,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Pause",
+   "code": 72,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Insert",
+   "code": 73,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "ShiftRight",
+   "code": 229,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "ArrowUp",
+   "code": 82,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad1",
+   "code": 89,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad2",
+   "code": 90,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad3",
+   "code": 91,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumpadEnter",
+   "code": 88,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "ControlLeft",
+   "code": 224,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "MetaLeft",
+   "code": 227,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "ContextMenu",
+   "code": 231,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "AltLeft",
+   "code": 226,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "Space",
+   "code": 44,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "AltRight",
+   "code": 230,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "ControlRight",
+   "code": 228,
+   "down": 16,
+   "up": 144,
+   "class": "modifier(HID usage 0xE0-0xE7)"
+  },
+  {
+   "name": "ArrowLeft",
+   "code": 80,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "ArrowDown",
+   "code": 81,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "ArrowRight",
+   "code": 79,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "Numpad0",
+   "code": 98,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  },
+  {
+   "name": "NumpadDecimal",
+   "code": 99,
+   "down": 0,
+   "up": 128,
+   "class": "key(HID usage)"
+  }
+ ],
+ "advanced_key_types": [
+  {
+   "name": "TGL",
+   "record_type": 1,
+   "feature_bit": 0,
+   "desc": "Click the button to switch on or off continuous triggering, and hold the button for normal triggering"
+  },
+  {
+   "name": "MT",
+   "record_type": 2,
+   "feature_bit": 1,
+   "desc": "A single button can realize 2 functions, pressing and clicking can trigger different functions"
+  },
+  {
+   "name": "DKS",
+   "record_type": 3,
+   "feature_bit": 2,
+   "desc": "A single button can realize 4 functions, and you can bind functions according to different pressing degrees"
+  },
+  {
+   "name": "SOCD",
+   "record_type": 4,
+   "feature_bit": 3,
+   "desc": "Bind two buttons. The button pressed later will force the previous button to be released. Only one button will be triggered at the same time.",
+   "socd_type_values": {
+    "0": "neutral (both cancel)",
+    "1": "last input priority",
+    "3": "absolute priority key 1",
+    "4": "absolute priority key 2"
+   }
+  },
+  {
+   "name": "MPT",
+   "record_type": 5,
+   "feature_bit": 4,
+   "desc": "A single button can trigger three different button functions at three different depths"
+  },
+  {
+   "name": "END",
+   "record_type": 6,
+   "feature_bit": 5,
+   "desc": "A single key can send another key function when released"
+  }
+ ],
+ "layout_only_codes_not_in_menu": [
+  {
+   "name": "JIS Yen (K14)",
+   "value": "0x00000089",
+   "hid": "International3"
+  },
+  {
+   "name": "JIS Ro (K56)",
+   "value": "0x00000087",
+   "hid": "International1"
+  },
+  {
+   "name": "JIS Kana",
+   "value": "0x00000088",
+   "hid": "International2"
+  },
+  {
+   "name": "JIS Henkan",
+   "value": "0x0000008a",
+   "hid": "International4"
+  },
+  {
+   "name": "JIS Muhenkan",
+   "value": "0x0000008b",
+   "hid": "International5"
+  },
+  {
+   "name": "K42 (ISO/JIS #)",
+   "value": "0x00000032",
+   "hid": "Non-US # and ~"
+  }
+ ],
+ "categories": [
+  {
+   "id": "basic_key",
+   "ui_store_type": "basic",
+   "label_en": "Basic key",
+   "ui_menu": "tab \"basic\" (cH1)",
+   "entries": [
+    {
+     "name": "Fn",
+     "desc_key": "Fn",
+     "label_en": "Fn",
+     "value": "0x0d000000",
+     "shown_on_keyboard": true,
+     "only": "keyboard",
+     "decoded": {
+      "kind": "fn_layer",
+      "sub": "0x00",
+      "note": "0x0d000000 = \"Fn\", 0x0d010000 = \"Fn1\" (layer-select semantics inferred)"
+     }
+    },
+    {
+     "name": "Fn1",
+     "desc_key": "Fn1",
+     "label_en": "Fn1",
+     "value": "0x0d010000",
+     "shown_on_keyboard": true,
+     "only": "keyboard",
+     "decoded": {
+      "kind": "fn_layer",
+      "sub": "0x01",
+      "note": "0x0d000000 = \"Fn\", 0x0d010000 = \"Fn1\" (layer-select semantics inferred)"
+     }
+    },
+    {
+     "name": "-_",
+     "desc_key": "-_",
+     "label_en": "-_",
+     "value": "0x0000002d",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x2d"
+     }
+    },
+    {
+     "name": ",<",
+     "desc_key": ",<",
+     "label_en": ",<",
+     "value": "0x00000036",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x36"
+     }
+    },
+    {
+     "name": ";:",
+     "desc_key": ";:",
+     "label_en": ";:",
+     "value": "0x00000033",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x33"
+     }
+    },
+    {
+     "name": ".>",
+     "desc_key": ".?",
+     "label_en": ".>",
+     "value": "0x00000037",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x37"
+     }
+    },
+    {
+     "name": "' \"",
+     "desc_key": "' \"",
+     "label_en": "' \"",
+     "value": "0x00000034",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x34"
+     }
+    },
+    {
+     "name": "[{",
+     "desc_key": "[{",
+     "label_en": "[{",
+     "value": "0x0000002f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x2f"
+     }
+    },
+    {
+     "name": "]}",
+     "desc_key": "]}",
+     "label_en": "]}",
+     "value": "0x00000030",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x30"
+     }
+    },
+    {
+     "name": "/?",
+     "desc_key": "/?",
+     "label_en": "/?",
+     "value": "0x00000038",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x38"
+     }
+    },
+    {
+     "name": "\\ |",
+     "desc_key": "\\ |",
+     "label_en": "\\ |",
+     "value": "0x00000031",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x31"
+     }
+    },
+    {
+     "name": "`~",
+     "desc_key": "`~",
+     "label_en": "`~",
+     "value": "0x00000035",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x35"
+     }
+    },
+    {
+     "name": "=+",
+     "desc_key": "=+",
+     "label_en": "=+",
+     "value": "0x0000002e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x2e"
+     }
+    },
+    {
+     "name": "0",
+     "desc_key": "0",
+     "label_en": "0",
+     "value": "0x00000027",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x27"
+     }
+    },
+    {
+     "name": "1",
+     "desc_key": "1",
+     "label_en": "1",
+     "value": "0x0000001e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x1e"
+     }
+    },
+    {
+     "name": "2",
+     "desc_key": "2",
+     "label_en": "2",
+     "value": "0x0000001f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x1f"
+     }
+    },
+    {
+     "name": "3",
+     "desc_key": "3",
+     "label_en": "3",
+     "value": "0x00000020",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x20"
+     }
+    },
+    {
+     "name": "4",
+     "desc_key": "4",
+     "label_en": "4",
+     "value": "0x00000021",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x21"
+     }
+    },
+    {
+     "name": "5",
+     "desc_key": "5",
+     "label_en": "5",
+     "value": "0x00000022",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x22"
+     }
+    },
+    {
+     "name": "6",
+     "desc_key": "6",
+     "label_en": "6",
+     "value": "0x00000023",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x23"
+     }
+    },
+    {
+     "name": "7",
+     "desc_key": "7",
+     "label_en": "7",
+     "value": "0x00000024",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x24"
+     }
+    },
+    {
+     "name": "8",
+     "desc_key": "8",
+     "label_en": "8",
+     "value": "0x00000025",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x25"
+     }
+    },
+    {
+     "name": "9",
+     "desc_key": "9",
+     "label_en": "9",
+     "value": "0x00000026",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x26"
+     }
+    },
+    {
+     "name": "A",
+     "desc_key": "A",
+     "label_en": "A",
+     "value": "0x00000004",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x04"
+     }
+    },
+    {
+     "name": "B",
+     "desc_key": "B",
+     "label_en": "B",
+     "value": "0x00000005",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x05"
+     }
+    },
+    {
+     "name": "C",
+     "desc_key": "C",
+     "label_en": "C",
+     "value": "0x00000006",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x06"
+     }
+    },
+    {
+     "name": "D",
+     "desc_key": "D",
+     "label_en": "D",
+     "value": "0x00000007",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x07"
+     }
+    },
+    {
+     "name": "E",
+     "desc_key": "E",
+     "label_en": "E",
+     "value": "0x00000008",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x08"
+     }
+    },
+    {
+     "name": "F",
+     "desc_key": "F",
+     "label_en": "F",
+     "value": "0x00000009",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x09"
+     }
+    },
+    {
+     "name": "G",
+     "desc_key": "G",
+     "label_en": "G",
+     "value": "0x0000000a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x0a"
+     }
+    },
+    {
+     "name": "H",
+     "desc_key": "H",
+     "label_en": "H",
+     "value": "0x0000000b",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x0b"
+     }
+    },
+    {
+     "name": "I",
+     "desc_key": "I",
+     "label_en": "I",
+     "value": "0x0000000c",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x0c"
+     }
+    },
+    {
+     "name": "J",
+     "desc_key": "J",
+     "label_en": "J",
+     "value": "0x0000000d",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x0d"
+     }
+    },
+    {
+     "name": "K",
+     "desc_key": "K",
+     "label_en": "K",
+     "value": "0x0000000e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x0e"
+     }
+    },
+    {
+     "name": "L",
+     "desc_key": "L",
+     "label_en": "L",
+     "value": "0x0000000f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x0f"
+     }
+    },
+    {
+     "name": "M",
+     "desc_key": "M",
+     "label_en": "M",
+     "value": "0x00000010",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x10"
+     }
+    },
+    {
+     "name": "N",
+     "desc_key": "N",
+     "label_en": "N",
+     "value": "0x00000011",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x11"
+     }
+    },
+    {
+     "name": "O",
+     "desc_key": "O",
+     "label_en": "O",
+     "value": "0x00000012",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x12"
+     }
+    },
+    {
+     "name": "P",
+     "desc_key": "P",
+     "label_en": "P",
+     "value": "0x00000013",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x13"
+     }
+    },
+    {
+     "name": "Q",
+     "desc_key": "Q",
+     "label_en": "Q",
+     "value": "0x00000014",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x14"
+     }
+    },
+    {
+     "name": "R",
+     "desc_key": "R",
+     "label_en": "R",
+     "value": "0x00000015",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x15"
+     }
+    },
+    {
+     "name": "S",
+     "desc_key": "S",
+     "label_en": "S",
+     "value": "0x00000016",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x16"
+     }
+    },
+    {
+     "name": "T",
+     "desc_key": "T",
+     "label_en": "T",
+     "value": "0x00000017",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x17"
+     }
+    },
+    {
+     "name": "U",
+     "desc_key": "U",
+     "label_en": "U",
+     "value": "0x00000018",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x18"
+     }
+    },
+    {
+     "name": "V",
+     "desc_key": "V",
+     "label_en": "V",
+     "value": "0x00000019",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x19"
+     }
+    },
+    {
+     "name": "W",
+     "desc_key": "W",
+     "label_en": "W",
+     "value": "0x0000001a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x1a"
+     }
+    },
+    {
+     "name": "X",
+     "desc_key": "X",
+     "label_en": "X",
+     "value": "0x0000001b",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x1b"
+     }
+    },
+    {
+     "name": "Y",
+     "desc_key": "Y",
+     "label_en": "Y",
+     "value": "0x0000001c",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x1c"
+     }
+    },
+    {
+     "name": "Z",
+     "desc_key": "Z",
+     "label_en": "Z",
+     "value": "0x0000001d",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x1d"
+     }
+    },
+    {
+     "name": "L_Alt",
+     "desc_key": "L_Alt",
+     "label_en": "L_Alt",
+     "value": "0x00040000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Backspace",
+     "desc_key": "Backspace",
+     "label_en": "Backspace",
+     "value": "0x0000002a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x2a"
+     }
+    },
+    {
+     "name": "Caps",
+     "desc_key": "Caps",
+     "label_en": "Caps",
+     "value": "0x00000039",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x39"
+     }
+    },
+    {
+     "name": "L_Ctrl",
+     "desc_key": "L_Ctrl",
+     "label_en": "L_Ctrl",
+     "value": "0x00010000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Delete",
+     "desc_key": "Delete",
+     "label_en": "Delete",
+     "value": "0x0000004c",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x4c"
+     }
+    },
+    {
+     "name": "Down",
+     "desc_key": "Down",
+     "label_en": "Down",
+     "value": "0x00000051",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x51"
+     }
+    },
+    {
+     "name": "End",
+     "desc_key": "End",
+     "label_en": "End",
+     "value": "0x0000004d",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x4d"
+     }
+    },
+    {
+     "name": "Enter",
+     "desc_key": "Enter",
+     "label_en": "Enter",
+     "value": "0x00000028",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x28"
+     }
+    },
+    {
+     "name": "Esc",
+     "desc_key": "Esc",
+     "label_en": "Esc",
+     "value": "0x00000029",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x29"
+     }
+    },
+    {
+     "name": "F1",
+     "desc_key": "F1",
+     "label_en": "F1",
+     "value": "0x0000003a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x3a"
+     }
+    },
+    {
+     "name": "F2",
+     "desc_key": "F2",
+     "label_en": "F2",
+     "value": "0x0000003b",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x3b"
+     }
+    },
+    {
+     "name": "F3",
+     "desc_key": "F3",
+     "label_en": "F3",
+     "value": "0x0000003c",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x3c"
+     }
+    },
+    {
+     "name": "F4",
+     "desc_key": "F4",
+     "label_en": "F4",
+     "value": "0x0000003d",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x3d"
+     }
+    },
+    {
+     "name": "F5",
+     "desc_key": "F5",
+     "label_en": "F5",
+     "value": "0x0000003e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x3e"
+     }
+    },
+    {
+     "name": "F6",
+     "desc_key": "F6",
+     "label_en": "F6",
+     "value": "0x0000003f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x3f"
+     }
+    },
+    {
+     "name": "F7",
+     "desc_key": "F7",
+     "label_en": "F7",
+     "value": "0x00000040",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x40"
+     }
+    },
+    {
+     "name": "F8",
+     "desc_key": "F8",
+     "label_en": "F8",
+     "value": "0x00000041",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x41"
+     }
+    },
+    {
+     "name": "F9",
+     "desc_key": "F9",
+     "label_en": "F9",
+     "value": "0x00000042",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x42"
+     }
+    },
+    {
+     "name": "F10",
+     "desc_key": "F10",
+     "label_en": "F10",
+     "value": "0x00000043",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x43"
+     }
+    },
+    {
+     "name": "F11",
+     "desc_key": "F11",
+     "label_en": "F11",
+     "value": "0x00000044",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x44"
+     }
+    },
+    {
+     "name": "F12",
+     "desc_key": "F12",
+     "label_en": "F12",
+     "value": "0x00000045",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x45"
+     }
+    },
+    {
+     "name": "PrtSc",
+     "desc_key": "PrtSc",
+     "label_en": "PrtSc",
+     "value": "0x00000046",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x46"
+     }
+    },
+    {
+     "name": "Home",
+     "desc_key": "Home",
+     "label_en": "Home",
+     "value": "0x0000004a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x4a"
+     }
+    },
+    {
+     "name": "Insert",
+     "desc_key": "Insert",
+     "label_en": "Insert",
+     "value": "0x00000049",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x49"
+     }
+    },
+    {
+     "name": "Left",
+     "desc_key": "Left",
+     "label_en": "Left",
+     "value": "0x00000050",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x50"
+     }
+    },
+    {
+     "name": "L_WIN",
+     "desc_key": "L_WIN",
+     "label_en": "L_WIN",
+     "value": "0x00080000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Num -",
+     "desc_key": "Num -",
+     "label_en": "Num -",
+     "value": "0x00000056",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x56"
+     }
+    },
+    {
+     "name": "Num *",
+     "desc_key": "Num *",
+     "label_en": "Num *",
+     "value": "0x00000055",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x55"
+     }
+    },
+    {
+     "name": "Num /",
+     "desc_key": "Num /",
+     "label_en": "Num /",
+     "value": "0x00000054",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x54"
+     }
+    },
+    {
+     "name": "Num +",
+     "desc_key": "Num +",
+     "label_en": "Num +",
+     "value": "0x00000057",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x57"
+     }
+    },
+    {
+     "name": "Num 0",
+     "desc_key": "Num 0",
+     "label_en": "Num 0",
+     "value": "0x00000062",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x62"
+     }
+    },
+    {
+     "name": "Num 1",
+     "desc_key": "Num 1",
+     "label_en": "Num 1",
+     "value": "0x00000059",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x59"
+     }
+    },
+    {
+     "name": "Num 2",
+     "desc_key": "Num 2",
+     "label_en": "Num 2",
+     "value": "0x0000005a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x5a"
+     }
+    },
+    {
+     "name": "Num 3",
+     "desc_key": "Num 3",
+     "label_en": "Num 3",
+     "value": "0x0000005b",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x5b"
+     }
+    },
+    {
+     "name": "Num 4",
+     "desc_key": "Num 4",
+     "label_en": "Num 4",
+     "value": "0x0000005c",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x5c"
+     }
+    },
+    {
+     "name": "Num 5",
+     "desc_key": "Num 5",
+     "label_en": "Num 5",
+     "value": "0x0000005d",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x5d"
+     }
+    },
+    {
+     "name": "Num 6",
+     "desc_key": "Num 6",
+     "label_en": "Num 6",
+     "value": "0x0000005e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x5e"
+     }
+    },
+    {
+     "name": "Num 7",
+     "desc_key": "Num 7",
+     "label_en": "Num 7",
+     "value": "0x0000005f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x5f"
+     }
+    },
+    {
+     "name": "Num 8",
+     "desc_key": "Num 8",
+     "label_en": "Num 8",
+     "value": "0x00000060",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x60"
+     }
+    },
+    {
+     "name": "Num 9",
+     "desc_key": "Num 9",
+     "label_en": "Num 9",
+     "value": "0x00000061",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x61"
+     }
+    },
+    {
+     "name": "Num Del",
+     "desc_key": "Num Del",
+     "label_en": "Num Del",
+     "value": "0x00000063",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x63"
+     }
+    },
+    {
+     "name": "Num Enter",
+     "desc_key": "Num Enter",
+     "label_en": "Num Enter",
+     "value": "0x00000058",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x58"
+     }
+    },
+    {
+     "name": "Num Lock",
+     "desc_key": "Num Lock",
+     "label_en": "Num Lock",
+     "value": "0x00000053",
+     "shown_on_keyboard": true,
+     "only": "keyboard",
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x53"
+     }
+    },
+    {
+     "name": "PgDn",
+     "desc_key": "PgDn",
+     "label_en": "PgDn",
+     "value": "0x0000004e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x4e"
+     }
+    },
+    {
+     "name": "PgUp",
+     "desc_key": "PgUp",
+     "label_en": "PgUp",
+     "value": "0x0000004b",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x4b"
+     }
+    },
+    {
+     "name": "Pause",
+     "desc_key": "Pause",
+     "label_en": "Pause",
+     "value": "0x00000048",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x48"
+     }
+    },
+    {
+     "name": "Right",
+     "desc_key": "Right",
+     "label_en": "Right",
+     "value": "0x0000004f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x4f"
+     }
+    },
+    {
+     "name": "R_Alt",
+     "desc_key": "R_Alt",
+     "label_en": "R_Alt",
+     "value": "0x00400000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x40",
+      "modifiers": [
+       "RAlt"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "R_Ctrl",
+     "desc_key": "R_Ctrl",
+     "label_en": "R_Ctrl",
+     "value": "0x00100000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x10",
+      "modifiers": [
+       "RCtrl"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "R_Shift",
+     "desc_key": "R_Shift",
+     "label_en": "R_Shift",
+     "value": "0x00200000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x20",
+      "modifiers": [
+       "RShift"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "R_WIN",
+     "desc_key": "R_WIN",
+     "label_en": "R_WIN",
+     "value": "0x00800000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x80",
+      "modifiers": [
+       "RGUI"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Scroll Lock",
+     "desc_key": "Scroll Lock",
+     "label_en": "Scroll Lock",
+     "value": "0x00000047",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x47"
+     }
+    },
+    {
+     "name": "L_Shift",
+     "desc_key": "L_Shift",
+     "label_en": "L_Shift",
+     "value": "0x00020000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x02",
+      "modifiers": [
+       "LShift"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Space",
+     "desc_key": "Space",
+     "label_en": "Space",
+     "value": "0x0000002c",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x2c"
+     }
+    },
+    {
+     "name": "Tab",
+     "desc_key": "Tab",
+     "label_en": "Tab",
+     "value": "0x0000002b",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x2b"
+     }
+    },
+    {
+     "name": "App",
+     "desc_key": "App",
+     "label_en": "App",
+     "value": "0x00000065",
+     "shown_on_keyboard": true,
+     "only": "keyboard",
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x65"
+     }
+    },
+    {
+     "name": "Up",
+     "desc_key": "Up",
+     "label_en": "Up",
+     "value": "0x00000052",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x52"
+     }
+    }
+   ]
+  },
+  {
+   "id": "mouse",
+   "ui_store_type": "basic",
+   "label_en": "mouse",
+   "ui_menu": "tab \"basic\" (cH1)",
+   "entries": [
+    {
+     "name": "empty_button",
+     "desc_key": "empty_button",
+     "label_en": "None",
+     "value": "0x00000000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x00",
+      "modifiers": [],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "left_button",
+     "desc_key": "left_button",
+     "label_en": "left click",
+     "value": "0x01010100",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "mouse_button",
+      "button": 1,
+      "note": "byte1 = button id (1 L,2 R,3 M,4 back,5 fwd); bytes2-3 = 0x0100 (inferred: press/flag)"
+     }
+    },
+    {
+     "name": "right_button",
+     "desc_key": "right_button",
+     "label_en": "Right click",
+     "value": "0x01020100",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "mouse_button",
+      "button": 2,
+      "note": "byte1 = button id (1 L,2 R,3 M,4 back,5 fwd); bytes2-3 = 0x0100 (inferred: press/flag)"
+     }
+    },
+    {
+     "name": "mid_button",
+     "desc_key": "mid_button",
+     "label_en": "mid",
+     "value": "0x01030100",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "mouse_button",
+      "button": 3,
+      "note": "byte1 = button id (1 L,2 R,3 M,4 back,5 fwd); bytes2-3 = 0x0100 (inferred: press/flag)"
+     }
+    },
+    {
+     "name": "forward",
+     "desc_key": "forward",
+     "label_en": "go ahead",
+     "value": "0x01050100",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "mouse_button",
+      "button": 5,
+      "note": "byte1 = button id (1 L,2 R,3 M,4 back,5 fwd); bytes2-3 = 0x0100 (inferred: press/flag)"
+     }
+    },
+    {
+     "name": "back",
+     "desc_key": "back",
+     "label_en": "Back",
+     "value": "0x01040100",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "mouse_button",
+      "button": 4,
+      "note": "byte1 = button id (1 L,2 R,3 M,4 back,5 fwd); bytes2-3 = 0x0100 (inferred: press/flag)"
+     }
+    },
+    {
+     "name": "dpi_plus",
+     "desc_key": "dpi_plus",
+     "label_en": "DPI+",
+     "value": "0x05010000",
+     "shown_on_keyboard": false,
+     "only": "mouse",
+     "decoded": {
+      "kind": "mouse_dpi",
+      "sub": 1,
+      "note": "mouse-only"
+     }
+    },
+    {
+     "name": "dpi_sub",
+     "desc_key": "dpi_sub",
+     "label_en": "DPI-",
+     "value": "0x05020000",
+     "shown_on_keyboard": false,
+     "only": "mouse",
+     "decoded": {
+      "kind": "mouse_dpi",
+      "sub": 2,
+      "note": "mouse-only"
+     }
+    },
+    {
+     "name": "dpi_switch",
+     "desc_key": "dpi_switch",
+     "label_en": "DPI switching",
+     "value": "0x05040000",
+     "shown_on_keyboard": false,
+     "only": "mouse",
+     "decoded": {
+      "kind": "mouse_dpi",
+      "sub": 4,
+      "note": "mouse-only"
+     }
+    },
+    {
+     "name": "shoot_button",
+     "desc_key": "shoot_button",
+     "label_en": "Sniper Key",
+     "value": "0x0a000000",
+     "shown_on_keyboard": false,
+     "only": "mouse",
+     "decoded": {
+      "kind": "mouse_sniper",
+      "note": "mouse-only"
+     }
+    }
+   ]
+  },
+  {
+   "id": "edit",
+   "ui_store_type": "combination",
+   "label_en": "edit",
+   "ui_menu": "tab \"shortcuts\" (uH1)",
+   "entries": [
+    {
+     "name": "Ctrl + .",
+     "desc_key": "ctrl + .",
+     "label_en": "Ctrl + .",
+     "value": "0x00013700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x37",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + ;",
+     "desc_key": "ctrl + ;",
+     "label_en": "Ctrl + ;",
+     "value": "0x00013300",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x33",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + 0",
+     "desc_key": "reset",
+     "label_en": "Ctrl + 0",
+     "value": "0x00012700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x27",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + O",
+     "desc_key": "open",
+     "label_en": "Ctrl + O",
+     "value": "0x00011200",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x12",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + A",
+     "desc_key": "all",
+     "label_en": "Ctrl + A",
+     "value": "0x00010400",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x04",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + C",
+     "desc_key": "copy",
+     "label_en": "copy",
+     "value": "0x00010600",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x06",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + F",
+     "desc_key": "search",
+     "label_en": "Ctrl + F",
+     "value": "0x00010900",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x09",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + N",
+     "desc_key": "new",
+     "label_en": "Ctrl + N",
+     "value": "0x00011100",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x11",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + S",
+     "desc_key": "save",
+     "label_en": "save",
+     "value": "0x00011600",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x16",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + T",
+     "desc_key": "new_item",
+     "label_en": "Ctrl + T",
+     "value": "0x00011700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x17",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + V",
+     "desc_key": "paste",
+     "label_en": "Paste",
+     "value": "0x00011900",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x19",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + W",
+     "desc_key": "close_item",
+     "label_en": "Ctrl + W",
+     "value": "0x00011a00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x1a",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + X",
+     "desc_key": "cut",
+     "label_en": "cut",
+     "value": "0x00011b00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x1b",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + Y",
+     "desc_key": "restore",
+     "label_en": "Ctrl + Y",
+     "value": "0x00011c00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x1c",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + Z",
+     "desc_key": "revoke",
+     "label_en": "Cancel",
+     "value": "0x00011d00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x1d",
+      "hid_usage_2": "0x00"
+     }
+    }
+   ]
+  },
+  {
+   "id": "navigation",
+   "ui_store_type": "combination",
+   "label_en": "navigation",
+   "ui_menu": "tab \"shortcuts\" (uH1)",
+   "entries": [
+    {
+     "name": "Alt + Left",
+     "desc_key": "back",
+     "label_en": "Back",
+     "value": "0x00045000",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x50",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Alt + Right",
+     "desc_key": "move_forward",
+     "label_en": "Alt + Right",
+     "value": "0x00044f00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x4f",
+      "hid_usage_2": "0x00"
+     }
+    }
+   ]
+  },
+  {
+   "id": "windows",
+   "ui_store_type": "combination",
+   "label_en": "windows",
+   "ui_menu": "tab \"system\" (dH1)",
+   "entries": [
+    {
+     "name": "LWin + tab",
+     "desc_key": "task_bar",
+     "label_en": "LWin + tab",
+     "value": "0x00082b00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x2b",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + D",
+     "desc_key": "hide_show_desktop",
+     "label_en": "LWin + D",
+     "value": "0x00080700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x07",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + Ctrl + Enter",
+     "desc_key": "open_description",
+     "label_en": "LWin + Ctrl + Enter",
+     "value": "0x00095800",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x09",
+      "modifiers": [
+       "LCtrl",
+       "LGUI"
+      ],
+      "hid_usage_1": "0x58",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + T",
+     "desc_key": "loop_task_app",
+     "label_en": "LWin + T",
+     "value": "0x00081700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x17",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + A",
+     "desc_key": "action_center",
+     "label_en": "LWin + A",
+     "value": "0x00080400",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x04",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + E",
+     "desc_key": "file_resource_manager",
+     "label_en": "LWin + E",
+     "value": "0x00080800",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x08",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + I",
+     "desc_key": "windows_setting_center",
+     "label_en": "LWin + I",
+     "value": "0x00080c00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x0c",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + L",
+     "desc_key": "lock_screen",
+     "label_en": "LWin + L",
+     "value": "0x00080f00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x0f",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + K",
+     "desc_key": "screen_projection_other",
+     "label_en": "LWin + K",
+     "value": "0x00080e00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x0e",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + B",
+     "desc_key": "jump_",
+     "label_en": "LWin + B",
+     "value": "0x00080500",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x05",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + G",
+     "desc_key": "start_xbox_bar",
+     "label_en": "LWin + G",
+     "value": "0x00080a00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x0a",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + R",
+     "desc_key": "run",
+     "label_en": "LWin + R",
+     "value": "0x00081500",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x15",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + S",
+     "desc_key": "search",
+     "label_en": "LWin + S",
+     "value": "0x00081600",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x16",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + U",
+     "desc_key": "show_setting",
+     "label_en": "LWin + U",
+     "value": "0x00081800",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x18",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + X",
+     "desc_key": "basic_menu",
+     "label_en": "LWin + X",
+     "value": "0x00081b00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x1b",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + P",
+     "desc_key": "project_screen",
+     "label_en": "LWin + P",
+     "value": "0x00080013",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x13"
+     }
+    },
+    {
+     "name": "LWin + .",
+     "desc_key": "emoji_box",
+     "label_en": "LWin + .",
+     "value": "0x00083700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x37",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "LWin + =",
+     "desc_key": "magnifying_glass",
+     "label_en": "LWin + =",
+     "value": "0x00082e00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x2e",
+      "hid_usage_2": "0x00"
+     }
+    }
+   ]
+  },
+  {
+   "id": "efficiency",
+   "ui_store_type": "combination",
+   "label_en": "efficiency",
+   "ui_menu": "tab \"shortcuts\" (uH1)",
+   "entries": [
+    {
+     "name": "Ctrl + Shift + Esc",
+     "desc_key": "task_manager",
+     "label_en": "task manager",
+     "value": "0x00032900",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x03",
+      "modifiers": [
+       "LCtrl",
+       "LShift"
+      ],
+      "hid_usage_1": "0x29",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Ctrl + ESC",
+     "desc_key": "start_menu",
+     "label_en": "Ctrl + ESC",
+     "value": "0x00010029",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x00",
+      "hid_usage_2": "0x29"
+     }
+    },
+    {
+     "name": "Alt + Tab",
+     "desc_key": "app_switch",
+     "label_en": "Alt + Tab",
+     "value": "0x00042b00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x2b",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Alt + F4",
+     "desc_key": "close_app",
+     "label_en": "Alt + F4",
+     "value": "0x00043d00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x3d",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "Alt + ESC",
+     "desc_key": "switch_next_app",
+     "label_en": "Alt + ESC",
+     "value": "0x00042900",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x29",
+      "hid_usage_2": "0x00"
+     }
+    }
+   ]
+  },
+  {
+   "id": "system_edit",
+   "ui_store_type": "combination",
+   "label_en": "System editor",
+   "ui_menu": "tab \"system\" (dH1)",
+   "entries": [
+    {
+     "name": "cut",
+     "desc_key": "cut",
+     "label_en": "cut",
+     "value": "0x00011b00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x1b",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "copy",
+     "desc_key": "copy",
+     "label_en": "copy",
+     "value": "0x00010600",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x06",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "paste",
+     "desc_key": "paste",
+     "label_en": "Paste",
+     "value": "0x00011900",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x19",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "revoke",
+     "desc_key": "revoke",
+     "label_en": "Cancel",
+     "value": "0x00011d00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x1d",
+      "hid_usage_2": "0x00"
+     }
+    }
+   ]
+  },
+  {
+   "id": "system_multimedia",
+   "ui_store_type": "combination",
+   "label_en": "multimedia",
+   "ui_menu": "tab \"system\" (dH1)",
+   "entries": [
+    {
+     "name": "play_pause",
+     "desc_key": "play_pause",
+     "label_en": "play / Pause",
+     "value": "0x020000cd",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00cd",
+      "usage_name": "Play/Pause"
+     }
+    },
+    {
+     "name": "system_multimedia",
+     "desc_key": "system_multimedia",
+     "label_en": "multimedia",
+     "value": "0x02000183",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x0183",
+      "usage_name": "AL Consumer Control Configuration (media player)"
+     }
+    },
+    {
+     "name": "mute",
+     "desc_key": "mute",
+     "label_en": "Mute",
+     "value": "0x020000e2",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00e2",
+      "usage_name": "Mute"
+     }
+    },
+    {
+     "name": "pause",
+     "desc_key": "pause",
+     "label_en": "pause",
+     "value": "0x020000b7",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00b7",
+      "usage_name": "Stop"
+     }
+    },
+    {
+     "name": "previous_song",
+     "desc_key": "previous_song",
+     "label_en": "Previous song",
+     "value": "0x020000b6",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00b6",
+      "usage_name": "Scan Previous Track"
+     }
+    },
+    {
+     "name": "next_song",
+     "desc_key": "next_song",
+     "label_en": "next song",
+     "value": "0x020000b5",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00b5",
+      "usage_name": "Scan Next Track"
+     }
+    },
+    {
+     "name": "volume_up",
+     "desc_key": "volume_up",
+     "label_en": "Volume +",
+     "value": "0x020000e9",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00e9",
+      "usage_name": "Volume Increment"
+     }
+    },
+    {
+     "name": "volume_down",
+     "desc_key": "volume_down",
+     "label_en": "volume-",
+     "value": "0x020000ea",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x00ea",
+      "usage_name": "Volume Decrement"
+     }
+    }
+   ]
+  },
+  {
+   "id": "system_tools",
+   "ui_store_type": "combination",
+   "label_en": "tool",
+   "ui_menu": "tab \"system\" (dH1)",
+   "entries": [
+    {
+     "name": "Win",
+     "desc_key": "Win",
+     "label_en": "Win",
+     "value": "0x0700000e",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "system_mode",
+      "sub": "0x0e",
+      "note": "0x0e = switch to Windows mode, 0x0f = switch to Mac mode (inferred from names)"
+     }
+    },
+    {
+     "name": "Mac",
+     "desc_key": "Mac",
+     "label_en": "Mac",
+     "value": "0x0700000f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "system_mode",
+      "sub": "0x0f",
+      "note": "0x0e = switch to Windows mode, 0x0f = switch to Mac mode (inferred from names)"
+     }
+    },
+    {
+     "name": "browser",
+     "desc_key": "browser",
+     "label_en": "Browser",
+     "value": "0x02000223",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x0223",
+      "usage_name": "AC Home (browser)"
+     }
+    },
+    {
+     "name": "calculator",
+     "desc_key": "calculator",
+     "label_en": "calculator",
+     "value": "0x02000192",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x0192",
+      "usage_name": "AL Calculator"
+     }
+    },
+    {
+     "name": "email",
+     "desc_key": "email",
+     "label_en": "e-mail",
+     "value": "0x0200018a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x018a",
+      "usage_name": "AL Email Reader"
+     }
+    },
+    {
+     "name": "my_computer",
+     "desc_key": "my_computer",
+     "label_en": "my computer",
+     "value": "0x02000194",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x0194",
+      "usage_name": "AL Local Machine Browser (My Computer)"
+     }
+    },
+    {
+     "name": "favorite",
+     "desc_key": "favorite",
+     "label_en": "Favorites",
+     "value": "0x0200022a",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x022a",
+      "usage_name": "AC Bookmarks (favorites)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "system_action",
+   "ui_store_type": "combination",
+   "label_en": "system",
+   "ui_menu": "tab \"system\" (dH1)",
+   "entries": [
+    {
+     "name": "close_windows",
+     "desc_key": "close_windows",
+     "label_en": "close the window",
+     "value": "0x00043d00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x04",
+      "modifiers": [
+       "LAlt"
+      ],
+      "hid_usage_1": "0x3d",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "lock_computer",
+     "desc_key": "lock_computer",
+     "label_en": "Lock computer",
+     "value": "0x00080f00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x0f",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "zoom_in",
+     "desc_key": "zoom_in",
+     "label_en": "enlarge",
+     "value": "0x00012e00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x2e",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "zoom_out",
+     "desc_key": "zoom_out",
+     "label_en": "zoom out",
+     "value": "0x00012d00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x2d",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "show_desktop",
+     "desc_key": "show_desktop",
+     "label_en": "Show desktop",
+     "value": "0x00080700",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x08",
+      "modifiers": [
+       "LGUI"
+      ],
+      "hid_usage_1": "0x07",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "task_manager",
+     "desc_key": "task_manager",
+     "label_en": "task manager",
+     "value": "0x00054c00",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x05",
+      "modifiers": [
+       "LCtrl",
+       "LAlt"
+      ],
+      "hid_usage_1": "0x4c",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "save",
+     "desc_key": "save",
+     "label_en": "save",
+     "value": "0x00011600",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "keyboard",
+      "modifiers_mask": "0x01",
+      "modifiers": [
+       "LCtrl"
+      ],
+      "hid_usage_1": "0x16",
+      "hid_usage_2": "0x00"
+     }
+    },
+    {
+     "name": "screen_bright_up",
+     "desc_key": "screen_bright_up",
+     "label_en": "Screen brightness+",
+     "value": "0x0200006f",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x006f",
+      "usage_name": "Display Brightness Increment"
+     }
+    },
+    {
+     "name": "screen_bright_down",
+     "desc_key": "screen_bright_down",
+     "label_en": "Screen brightness -",
+     "value": "0x02000070",
+     "shown_on_keyboard": true,
+     "only": null,
+     "decoded": {
+      "kind": "consumer",
+      "usage": "0x0070",
+      "usage_name": "Display Brightness Decrement"
+     }
+    }
+   ]
+  }
+ ]
+}
