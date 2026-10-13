@@ -1,179 +1,152 @@
-import { useState } from "react";
-import { useShallow } from "zustand/react/shallow";
-import { LockIcon } from "../components/icons";
-import { KeyboardStage, Page, SelectionActions } from "../components/KeyboardStage";
+import { useCallback } from "react";
+import { actTint, KeyboardStage } from "../components/KeyboardStage";
+import { MmCaption, MmField, MmSlider, useMm } from "../components/MmControl";
 import { SwitchDiagram } from "../components/SwitchDiagram";
-import { TravelSlider } from "../components/TravelSlider";
-import { Card, cx, Empty, Eyebrow, Notice } from "../components/ui";
-import { ApplyRow, MmField, mmDraft, useSavedFlag } from "../components/WriteControls";
-import { keyLegend } from "../data/keycodes";
+import { Card, cx, Empty, Note, PageBody, Pill, SelectionEmpty, Title } from "../components/ui";
 import { POSITIONS } from "../data/layout";
-import { ACTUATION_MAX_UM, ACTUATION_MIN_UM } from "../hid/hero68";
+import { ACTUATION_MIN_UM } from "../hid/hero68";
 import type { KeyboardSnapshot } from "../hid/snapshot";
-import { useI18n } from "../i18n";
-import { groupBy, spread, useTarget, type Spread } from "../lib/target";
-import { canWrite, useDriver } from "../store/driver";
-import { useUi } from "../store/ui";
-import { DistributionRow, switchTravel } from "./shared";
+import { useI18n, type MessageKey } from "../i18n";
+import { current } from "../store/draft";
+import { stepOf, switchTravel, travelOf, useCount, useEditor, useLegend, ValueRows } from "./common";
+
+const PRESETS: { name: MessageKey; um: number }[] = [
+  { name: "act.preset.competitive", um: 400 },
+  { name: "act.preset.balanced", um: 1000 },
+  { name: "act.preset.typing", um: 2000 },
+];
+/** Below this, resting a finger on the key can trigger it. */
+const LOW_UM = 300;
 
 export function ActuationPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
-  const { t, mm, lang } = useI18n();
-  const target = useTarget();
-  const select = useUi((s) => s.select);
-  const valueOf = (pos: number) => snapshot.keys[pos]?.actuationUm;
-
-  const range = spread(target.positions.map(valueOf).filter((v) => v !== undefined));
-  const distribution = groupBy(POSITIONS, valueOf);
-
-  return (
-    <Page
-      title={t("actuation.title")}
-      help={t("actuation.help")}
-      actions={<SelectionActions />}
-      stage={
-        <KeyboardStage
-          label={t("actuation.title")}
-          render={(key) => {
-            const um = valueOf(key.pos);
-            return { legend: keyLegend(snapshot.layers[0]?.[key.pos] ?? key.defaults[0]), value: um === undefined ? undefined : mm(um) };
-          }}
-        />
-      }
-    >
-      <div className="grid gap-4">
-        {/* Remounts on a new selection, a new read (not a write) or language (decimal separator) so the draft starts fresh. */}
-        <ActuationCard key={`${snapshot.readAt}:${lang}:${target.positions.join()}`} snapshot={snapshot} range={range} />
-
-        <Card title={t("dist.title")} description={t("dist.desc")}>
-          {distribution.length === 0 ? (
-            <Empty>{t("dist.empty")}</Empty>
-          ) : (
-            <ul className="-mx-3 grid gap-x-8 gap-y-0.5 md:grid-cols-2">
-              {distribution.map(([um, positions]) => (
-                <DistributionRow
-                  key={um}
-                  label={`${mm(um)} mm`}
-                  count={positions.length}
-                  total={POSITIONS.length}
-                  onSelect={() => select(positions)}
-                />
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-    </Page>
-  );
-}
-
-function ActuationCard({ snapshot, range }: { snapshot: KeyboardSnapshot; range: Spread | null }) {
   const { t, mm } = useI18n();
-  const target = useTarget();
-  const { source, writing, writable, setActuation } = useDriver(
-    useShallow((s) => ({ source: s.source, writing: s.writing, writable: canWrite(s), setActuation: s.setActuation })),
-  );
+  const { draft, edit, selected, writable } = useEditor();
+  const legend = useLegend(snapshot);
+  const count = useCount();
+  const act = useCallback((pos: number) => current.act(draft, snapshot, pos), [draft, snapshot]);
 
-  const travel = switchTravel(snapshot, target.positions);
-  const stepUm = snapshot.device.precision?.distance || 10;
-  const maxUm = Math.min(travel.travelUm, ACTUATION_MAX_UM);
-  const current = range && !range.mixed ? range.min : null;
-
-  const [text, setText] = useState(current === null ? "" : mm(current));
-  const [saved, setSaved] = useSavedFlag();
-  const { um: draft, invalid } = mmDraft(text, stepUm, ACTUATION_MIN_UM, maxUm);
-  const dirty = draft !== null && draft !== current;
-  const shown = draft ?? current;
-
-  const edit = (value: string) => {
-    setText(value);
-    setSaved(false);
-  };
-  const apply = async () => {
-    if (!dirty || writing) return;
-    setText(mm(draft));
-    setSaved(await setActuation(target.positions, draft));
-  };
-
-  const currentText = range
-    ? range.mixed
-      ? `${t("actuation.mixed")} · ${t("actuation.range", { min: mm(range.min), max: mm(range.max) })}`
-      : `${mm(range.min)} mm`
-    : t("value.unknown");
+  const keys = selected.filter((pos) => act(pos) !== undefined);
+  const maxTravel = keys.length ? Math.max(...keys.map((pos) => travelOf(snapshot, pos))) : switchTravel(snapshot, POSITIONS).travelUm;
+  const model = useMm({
+    values: keys.map((pos) => act(pos)!),
+    saved: keys.map((pos) => snapshot.keys[pos]?.actuationUm),
+    min: ACTUATION_MIN_UM,
+    max: maxTravel,
+    step: stepOf(snapshot),
+    disabled: !writable,
+    apply: (um) =>
+      edit("act", (d) => {
+        for (const pos of keys) d.act[pos] = Math.min(um, travelOf(snapshot, pos));
+      }),
+  });
+  const read = POSITIONS.some((pos) => snapshot.keys[pos]?.actuationUm !== undefined);
+  const diagramTravel = switchTravel(snapshot, keys.length ? keys : POSITIONS).travelUm;
 
   return (
-    <Card highlight>
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-[auto_minmax(0,1fr)] md:gap-7">
-        <div className="flex min-w-0 flex-col">
-          <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <Eyebrow className="text-accent">
-              {t("actuation.for")} {target.label}
-            </Eyebrow>
-            <p className="text-sm text-muted">
-              {t("actuation.current")} <span className="font-bold text-fg">{currentText}</span>
-            </p>
-          </div>
+    <>
+      <KeyboardStage
+        title={t("nav.actuation")}
+        values
+        sameValue={act}
+        legend={
+          <span className="legend">
+            {t("act.legendSoft")} <span className="ramp" /> {t("act.legendFirm")}
+          </span>
+        }
+        render={(key) => {
+          const um = act(key.pos);
+          return {
+            legend: legend(key),
+            value: um === undefined ? "—" : mm(um),
+            bg: um === undefined ? undefined : actTint(um),
+            dirty: key.pos in draft.act,
+            desc: um === undefined ? t("common.notRead") : t("act.keyDesc", { value: mm(um) }),
+          };
+        }}
+      />
+      <PageBody>
+        <div className="grid2">
+          <Card title={t("act.title")} info={t("act.info")} aside={selected.length > 0 && <Pill>{count(selected.length)}</Pill>}>
+            {!read ? (
+              <Empty title={t("common.notReadTitle")}>{t("act.notRead")}</Empty>
+            ) : !keys.length ? (
+              <SelectionEmpty />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="big font-mono tabular-nums">{model.mixed ? `${mm(model.min)}–${mm(model.max)}` : mm(model.min)}</span>
+                      <span className="text-[15px] text-muted">mm</span>
+                    </div>
+                    <MmCaption model={model} className="mt-1" />
+                  </div>
+                  <MmField model={model} label={t("act.title")} />
+                </div>
+                <div className="mt-[22px]">
+                  <MmSlider model={model} label={t("act.title")} />
+                  <div className="cap mt-2 flex justify-between">
+                    <span>{mm(ACTUATION_MIN_UM)} mm</span>
+                    <span>{mm(maxTravel)} mm</span>
+                  </div>
+                </div>
+                <div className="mt-[22px]">
+                  <Title as="span" info={t("act.presetsInfo")} infoLabel={t("info.presets")}>
+                    {t("common.presets")}
+                  </Title>
+                  <div className="presets mt-2">
+                    {PRESETS.map((preset) => {
+                      const on = !model.mixed && model.min === preset.um;
+                      return (
+                        <button key={preset.um} type="button" className={cx("preset", on && "on")} aria-pressed={on} disabled={!writable} onClick={() => model.apply(preset.um)}>
+                          <span className="font-semibold">{t(preset.name)}</span>
+                          <span className="font-mono text-[13px] text-accent-light tabular-nums">{mm(preset.um)} mm</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {model.min < LOW_UM && (
+                  <Note tone="warn" className="mt-4">
+                    {t("act.lowWarning", { value: mm(LOW_UM) })}
+                  </Note>
+                )}
+              </>
+            )}
+          </Card>
 
-          {source === "file" ? (
-            <div className="mt-4">
-              <Notice icon={<LockIcon size={16} />}>{t("write.connectToWrite")}</Notice>
-            </div>
-          ) : (
-            <form
-              className="mt-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void apply();
-              }}
-            >
-              <label htmlFor="actuation-value" className="text-sm font-semibold text-fg-2">
-                {t("actuation.value")}
-              </label>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <MmField
-                  id="actuation-value"
-                  size="md"
-                  value={text}
-                  invalid={invalid}
-                  disabled={!writable || writing}
-                  placeholder={range?.mixed ? "—" : undefined}
-                  describedBy="actuation-limits"
-                  onChange={edit}
-                  onBlur={() => draft !== null && setText(mm(draft))}
-                />
-                <ApplyRow size="md" target={target.label} writing={writing} disabled={!writable || !dirty} saved={saved} demo={source === "demo"} />
-              </div>
-              <p id="actuation-limits" className={cx("mt-2 text-xs", invalid ? "text-danger" : "text-subtle")}>
-                {t("write.limits", { min: mm(ACTUATION_MIN_UM), max: mm(maxUm) })}
-              </p>
-            </form>
-          )}
-
-          <p className="mt-auto pt-4 text-xs text-subtle">
-            {travel.estimated
-              ? t("actuation.travelEstimated", { mm: mm(travel.travelUm) })
-              : `${travel.name} · ${t("actuation.travel", { mm: mm(travel.travelUm) })}`}
-          </p>
-        </div>
-
-        <figure className="flex flex-col items-center gap-2 rounded-lg bg-panel/70 px-4 pt-3 pb-3 ring-1 ring-line md:order-first">
-          <div className="flex max-w-full items-start gap-3 sm:gap-4">
-            <SwitchDiagram travelUm={travel.travelUm} valueUm={shown} label={t("actuation.diagram")} />
-            <TravelSlider
-              travelUm={travel.travelUm}
-              minUm={ACTUATION_MIN_UM}
-              maxUm={maxUm}
-              stepUm={stepUm}
-              value={shown}
-              range={range}
-              disabled={!writable || writing}
-              label={t("actuation.title")}
-              onChange={(um) => edit(mm(um))}
-              onCommit={() => void apply()}
+          <Card title={t("act.diagram")} info={t("act.diagramInfo")}>
+            <SwitchDiagram
+              minUm={keys.length ? model.min : null}
+              maxUm={keys.length ? model.max : null}
+              travelUm={diagramTravel}
+              savedUm={model.changed ? model.saved : null}
             />
-          </div>
-          {writable && <figcaption className="text-[11px] text-subtle">{t("actuation.dragHint")}</figcaption>}
-        </figure>
-      </div>
-    </Card>
+            <div className="mt-2.5 flex flex-wrap justify-center gap-x-4 gap-y-2">
+              <span className="legend">
+                <span className="lg-dash" />
+                {t("act.legendPoint")}
+              </span>
+              <span className="legend">
+                <span className="tkm mr-0" />
+                {t("act.legendSaved")}
+              </span>
+            </div>
+            {read && (
+              <div className="mt-[18px] border-t border-line pt-3.5">
+                <div className="lab mb-1.5">{t("act.inUse")}</div>
+                <ValueRows
+                  positions={POSITIONS}
+                  valueOf={act}
+                  render={(um) => `${mm(um)} mm`}
+                  swatch={actTint}
+                  label={(um, n) => t("act.rowLabel", { n, value: mm(um) })}
+                />
+              </div>
+            )}
+          </Card>
+        </div>
+      </PageBody>
+    </>
   );
 }

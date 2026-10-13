@@ -1,24 +1,3 @@
-import { useMemo } from "react";
-import { POSITIONS } from "../data/layout";
-import { useI18n } from "../i18n";
-import { useUi } from "../store/ui";
-
-/** The keys a page summarizes: the selection, or every key when nothing is selected. */
-export function useTarget() {
-  const { t, lang } = useI18n();
-  const selected = useUi((s) => s.selected);
-  return useMemo(() => {
-    const positions = selected.length ? selected : POSITIONS;
-    return {
-      positions,
-      count: positions.length,
-      isSelection: selected.length > 0,
-      label: positions.length === 1 ? t("target.key") : t("target.keys", { n: positions.length }),
-    };
-    // t changes with lang only.
-  }, [selected, lang]);
-}
-
 export interface Spread {
   min: number;
   max: number;

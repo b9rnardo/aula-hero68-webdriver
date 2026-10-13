@@ -1,179 +1,71 @@
-import type { SVGProps } from "react";
+/** 24×24 stroke paths; several subpaths are separated by " M". */
+export const ICONS = {
+  overview: "M4 4h6.5v6.5H4z M13.5 4H20v6.5h-6.5z M4 13.5h6.5V20H4z M13.5 13.5H20V20h-6.5z",
+  profiles: "M12 3 3 7.5 12 12l9-4.5L12 3Z M3 12l9 4.5 9-4.5 M3 16.5 12 21l9-4.5",
+  actuation: "M12 3.5v11 M7.5 10 12 14.5 16.5 10 M5 20h14",
+  rapidTrigger: "M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z",
+  deadZone: "M4 5h16 M4 19h16 M8 9.5h8 M8 14.5h8",
+  switch: "M9 3.5h6v5H9z M4.5 8.5h15v8h-15z M8 16.5v4 M16 16.5v4",
+  calibrate: "M12 3v3 M12 18v3 M3 12h3 M18 12h3 M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z M12 11.5v1",
+  remap: "M7 7h11 M15 4l3 3-3 3 M17 17H6 M9 14l-3 3 3 3",
+  advanced: "M5 4v16 M12 4v16 M19 4v16 M3 8h4 M10 15h4 M17 10h4",
+  lighting:
+    "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z M12 2.5v2 M12 19.5v2 M5.3 5.3l1.4 1.4 M17.3 17.3l1.4 1.4 M2.5 12h2 M19.5 12h2 M5.3 18.7l1.4-1.4 M17.3 6.7l1.4-1.4",
+  settings: "M4 7h9 M17 7h3 M4 17h3 M11 17h9 M15 5v4 M9 15v4",
+  interface: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M3 12h18 M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9S9.6 5.5 12 3Z",
+  diagnostics: "M3 12h4l2.5-6 5 12 2.5-6h4",
+  help: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.7 M12 17.2v.1",
+  select: "M4 9V4h5 M15 4h5v5 M20 15v5h-5 M9 20H4v-5",
+  download: "M12 4v10 M8 10l4 4 4-4 M5 15v4h14v-4",
+  upload: "M12 15V5 M8 9l4-4 4 4 M5 15v4h14v-4",
+  undo: "M9 14 4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 0 11H11",
+  x: "M6 6l12 12 M18 6 6 18",
+  collapse: "M11 6l-6 6 6 6 M19 6l-6 6 6 6",
+  expand: "M5 6l6 6-6 6 M13 6l6 6-6 6",
+  info: "M12 11v6 M12 7.5v.01",
+  note: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z M12 11v5 M12 8v.01",
+  arrow: "M5 12h14 M13 6l6 6-6 6",
+  lock: "M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5 M5.5 10.5h13v10h-13z",
+  warn: "M10.3 4.2 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z M12 9.5v4.5 M12 17h.01",
+  check: "M5 12.5l4.5 4.5L19 7.5",
+  search: "M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Z M20 20l-4.8-4.8",
+  plug: "M9 7V3 M15 7V3 M7 7h10v4a5 5 0 0 1-10 0V7Z M12 16v5",
+  play: "M8 5.5v13l10-6.5-10-6.5Z",
+  chevron: "M6 9l6 6 6-6",
+  minus: "M6 12h12",
+  plus: "M12 6v12 M6 12h12",
+  keyboard: "M3 6.5h18v11H3z M7 10h.01 M11 10h.01 M15 10h.01 M7 14h10",
+  refresh: "M19.5 12a7.5 7.5 0 1 1-2.2-5.3 M19.5 4.5v4h-4",
+  menu: "M4 7h16 M4 12h16 M4 17h16",
+  copy: "M9 9h10v10H9z M5 15V5h10",
+  trash: "M5 7h14 M10 7V4.5h4V7 M7 7l1 12.5h8L17 7",
+  github:
+    "M9 19c-4.5 1.4-4.5-2.2-6.3-2.7 M15 21v-3.5a3 3 0 0 0-.8-2.3c2.8-.3 5.8-1.4 5.8-6.2a4.8 4.8 0 0 0-1.3-3.3 4.5 4.5 0 0 0-.1-3.3s-1-.3-3.4 1.3a11.6 11.6 0 0 0-6.2 0C6.6 2.1 5.6 2.4 5.6 2.4a4.5 4.5 0 0 0-.1 3.3A4.8 4.8 0 0 0 4.2 9c0 4.8 3 5.9 5.8 6.2a3 3 0 0 0-.8 2.3V21",
+} as const;
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+export type IconName = keyof typeof ICONS;
 
-function Icon({ size = 18, children, ...props }: IconProps) {
+/** Decorative by default; pass `label` when the icon is the only content that names something. */
+export function Icon({ name, size, className, label }: { name: IconName; size?: "s" | "xs"; className?: string; label?: string }) {
   return (
     <svg
-      width={size}
-      height={size}
+      className={["ic", size, className].filter(Boolean).join(" ")}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      {...props}
+      aria-hidden={label ? undefined : true}
+      role={label ? "img" : undefined}
+      aria-label={label}
     >
-      {children}
+      <path d={ICONS[name]} />
     </svg>
   );
 }
 
-export const KeyboardIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
-    <path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8" />
-  </Icon>
-);
-export const SettingsIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-  </Icon>
-);
-export const HelpIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.3-2.4 3.8M12 17h.01" />
-  </Icon>
-);
-export const QuickIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="3.5" y="4.5" width="17" height="13" rx="2" />
-    <path d="M7.5 9h9M7.5 13h5M9 20.5h6" />
-  </Icon>
-);
-export const ProfilesIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
-    <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
-    <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
-    <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
-  </Icon>
-);
-export const ActuationIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M12 3v12M8 11l4 4 4-4M5 20h14" />
-  </Icon>
-);
-export const RapidTriggerIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M8 4v12M5 13l3 3 3-3M16 20V8M13 11l3-3 3 3" />
-  </Icon>
-);
-export const DeadZoneIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M4 5h16M4 19h16" />
-    <path d="M6 8.5h12M6 15.5h12" strokeDasharray="2 2.5" />
-    <path d="M12 10.5v3" />
-  </Icon>
-);
-export const LightIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M4 15a8 8 0 0 1 16 0" />
-    <path d="M12 3v2M4.9 6.9l1.4 1.4M19.1 6.9l-1.4 1.4M2 15h2M20 15h2M7 19h10" />
-  </Icon>
-);
-export const RemapIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="3" y="3" width="8" height="8" rx="2" />
-    <rect x="13" y="13" width="8" height="8" rx="2" />
-    <path d="M15 4h2a3 3 0 0 1 3 3v2M18 7l2 2 2-2M9 20H7a3 3 0 0 1-3-3v-2M6 17l-2-2-2 2" />
-  </Icon>
-);
-export const AdvancedIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="3" y="5" width="18" height="14" rx="2.5" />
-    <path d="M7 9h4v6H7zM14 10h3M14 14h3" />
-  </Icon>
-);
-export const DiagnosticsIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M3 12h4l2.5-6 5 12 2.5-6h4" />
-  </Icon>
-);
-export const GlobeIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-  </Icon>
-);
-export const ChevronDownIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="m6 9 6 6 6-6" />
-  </Icon>
-);
-export const RefreshIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" />
-  </Icon>
-);
-export const DownloadIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" />
-  </Icon>
-);
-export const UploadIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M12 20V9m0 0 4 4m-4-4-4 4M5 4h14" />
-  </Icon>
-);
-export const SearchIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <circle cx="11" cy="11" r="6.5" />
-    <path d="m20 20-4.2-4.2" />
-  </Icon>
-);
-export const InfoIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 11v5M12 8h.01" />
-  </Icon>
-);
-export const WarnIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M10.3 4.2 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" />
-    <path d="M12 9.5v4.5M12 17h.01" />
-  </Icon>
-);
-export const LockIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="5" y="11" width="14" height="9" rx="2" />
-    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-  </Icon>
-);
-export const CheckIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="m5 12.5 4.5 4.5L19 7.5" />
-  </Icon>
-);
-export const CloseIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M6 6l12 12M18 6 6 18" />
-  </Icon>
-);
-export const PlugIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4" />
-  </Icon>
-);
-export const SidebarIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
-    <path d="M9.5 4.5v15" />
-  </Icon>
-);
-
-/** The app mark: an H made of two key travels, with the actuation point on the dashed line between them. */
-export function Logo({ size = 30 }: { size?: number }) {
+export function Logo() {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" aria-hidden>
-      <rect x="5" y="4" width="6" height="24" rx="3" />
-      <rect x="21" y="4" width="6" height="24" rx="3" />
-      <path d="M11 18.5h10" stroke="currentColor" strokeWidth="2.4" strokeDasharray="2.2 2.2" />
-      <circle cx="16" cy="18.5" r="3.3" />
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true" className="flex-none">
+      <rect x="1" y="1" width="30" height="30" rx="8" fill="#a48bff" />
+      <rect x="7" y="8" width="18" height="14" rx="4" fill="#140d24" />
+      <rect x="10" y="11" width="12" height="5" rx="2" fill="#a48bff" />
     </svg>
   );
 }

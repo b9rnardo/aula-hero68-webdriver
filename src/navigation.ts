@@ -1,33 +1,18 @@
-import { useEffect, useState, type ComponentType } from "react";
-import {
-  ActuationIcon,
-  AdvancedIcon,
-  DeadZoneIcon,
-  DiagnosticsIcon,
-  GlobeIcon,
-  HelpIcon,
-  KeyboardIcon,
-  LightIcon,
-  ProfilesIcon,
-  QuickIcon,
-  RapidTriggerIcon,
-  RemapIcon,
-  SettingsIcon,
-} from "./components/icons";
+import { useEffect, useState } from "react";
+import type { IconName } from "./components/icons";
 import type { MessageKey } from "./i18n";
 
-export type Group = "keyboard" | "settings" | "help";
-
 export const PAGE_IDS = [
-  "quick",
+  "overview",
   "profiles",
   "actuation",
   "rapidTrigger",
   "deadZone",
+  "switch",
   "remap",
   "advanced",
   "lighting",
-  "general",
+  "settings",
   "interface",
   "diagnostics",
   "help",
@@ -36,61 +21,67 @@ export type PageId = (typeof PAGE_IDS)[number];
 
 export interface PageDef {
   id: PageId;
-  group: Group;
-  icon: ComponentType<{ size?: number }>;
+  icon: IconName;
+  label: MessageKey;
   /** Needs keyboard data (a read, a backup or the demo). */
   needsData: boolean;
+  /** Has the keyboard at the top for picking keys. */
+  stage: boolean;
+  /** Shown but not written to the keyboard yet. */
+  readOnly?: boolean;
 }
 
+const page = (id: PageId, icon: IconName, needsData: boolean, stage: boolean, readOnly = false): PageDef => ({
+  id,
+  icon,
+  label: `nav.${id}` as MessageKey,
+  needsData,
+  stage,
+  readOnly,
+});
+
 export const PAGES: Record<PageId, PageDef> = {
-  quick: { id: "quick", group: "keyboard", icon: QuickIcon, needsData: true },
-  profiles: { id: "profiles", group: "keyboard", icon: ProfilesIcon, needsData: true },
-  actuation: { id: "actuation", group: "keyboard", icon: ActuationIcon, needsData: true },
-  rapidTrigger: { id: "rapidTrigger", group: "keyboard", icon: RapidTriggerIcon, needsData: true },
-  deadZone: { id: "deadZone", group: "keyboard", icon: DeadZoneIcon, needsData: true },
-  remap: { id: "remap", group: "keyboard", icon: RemapIcon, needsData: true },
-  advanced: { id: "advanced", group: "keyboard", icon: AdvancedIcon, needsData: true },
-  lighting: { id: "lighting", group: "keyboard", icon: LightIcon, needsData: true },
-  general: { id: "general", group: "settings", icon: SettingsIcon, needsData: true },
-  interface: { id: "interface", group: "settings", icon: GlobeIcon, needsData: false },
-  diagnostics: { id: "diagnostics", group: "settings", icon: DiagnosticsIcon, needsData: false },
-  help: { id: "help", group: "help", icon: HelpIcon, needsData: false },
+  overview: page("overview", "overview", true, false),
+  profiles: page("profiles", "profiles", true, false, true),
+  actuation: page("actuation", "actuation", true, true),
+  rapidTrigger: page("rapidTrigger", "rapidTrigger", true, true),
+  deadZone: page("deadZone", "deadZone", true, true),
+  switch: page("switch", "switch", true, true),
+  remap: page("remap", "remap", true, true),
+  advanced: page("advanced", "advanced", true, true, true),
+  lighting: page("lighting", "lighting", true, true, true),
+  settings: page("settings", "settings", true, false),
+  interface: page("interface", "interface", false, false),
+  diagnostics: page("diagnostics", "diagnostics", false, false),
+  help: page("help", "help", false, false),
 };
 
-/** Sidebar sections per rail group; a null label renders the items without a heading. */
-export const SECTIONS: Record<Group, { label: MessageKey | null; pages: PageId[] }[]> = {
-  keyboard: [
-    { label: null, pages: ["quick"] },
-    { label: "sidebar.profiles", pages: ["profiles"] },
-    { label: "sidebar.keyboardConfig", pages: ["actuation", "rapidTrigger", "deadZone", "remap", "advanced", "lighting"] },
-  ],
-  settings: [
-    { label: "sidebar.keyboardSettings", pages: ["general"] },
-    { label: "sidebar.driver", pages: ["interface", "diagnostics"] },
-  ],
-  help: [{ label: null, pages: ["help"] }],
-};
-
-export const GROUPS: { id: Group; icon: ComponentType<{ size?: number }>; label: MessageKey; title: MessageKey }[] = [
-  { id: "keyboard", icon: KeyboardIcon, label: "rail.keyboard", title: "sidebar.keyboardTitle" },
-  { id: "settings", icon: SettingsIcon, label: "rail.settings", title: "sidebar.settingsTitle" },
-  { id: "help", icon: HelpIcon, label: "rail.help", title: "sidebar.helpTitle" },
+/** Sidebar sections. Help sits apart, at the bottom. */
+export const SECTIONS: { label: MessageKey; pages: PageId[] }[] = [
+  { label: "nav.section.keyboard", pages: ["overview", "profiles"] },
+  { label: "nav.section.performance", pages: ["actuation", "rapidTrigger", "deadZone", "switch"] },
+  { label: "nav.section.keys", pages: ["remap", "advanced", "lighting"] },
+  { label: "nav.section.system", pages: ["settings", "interface", "diagnostics"] },
 ];
+
+/** Hashes from the previous layout, so old links and bookmarks still work. */
+const LEGACY: Record<string, PageId> = { quick: "overview", general: "settings" };
 
 const pageFromHash = (): PageId => {
   const hash = window.location.hash.replace(/^#\/?/, "");
-  return (PAGE_IDS as readonly string[]).includes(hash) ? (hash as PageId) : "quick";
+  if ((PAGE_IDS as readonly string[]).includes(hash)) return hash as PageId;
+  return LEGACY[hash] ?? "overview";
 };
 
 /** Current page, kept in the URL hash so reloads and the back button work. */
 export function usePage() {
-  const [page, setPage] = useState<PageId>(pageFromHash);
+  const [current, setCurrent] = useState<PageId>(pageFromHash);
   useEffect(() => {
-    const onHash = () => setPage(pageFromHash());
+    const onHash = () => setCurrent(pageFromHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-  return [page, (next: PageId) => (window.location.hash = next)] as const;
+  return current;
 }
 
-export const navigate = (page: PageId) => (window.location.hash = page);
+export const navigate = (id: PageId) => (window.location.hash = id);

@@ -1,5 +1,10 @@
 import { describeKey, type KeyCategory } from "../data/keycodes";
+import { keyByPos } from "../data/layout";
 import { useI18n, type MessageKey } from "../i18n";
+import { byOrder } from "./selection";
+
+/** Fn and Fn2: the keys that reach the other layers. */
+export const isLayerKey = (value: number | undefined) => value !== undefined && value >>> 24 === 0x0d;
 
 /** Human-readable text for 32-bit key function values, in the current language. */
 export function useKeyText() {
@@ -29,4 +34,16 @@ export function useKeyText() {
   }
 
   return { name, category };
+}
+
+/** Names of physical keys ("W", "Espaço") and short lists of them. */
+export function useKeyNames() {
+  const { t } = useI18n();
+  const name = (pos: number) => keyByPos.get(pos)?.label || t("key.space");
+  /** "W, A, S e mais 3", in keyboard order. */
+  const list = (positions: number[], max = 8) => {
+    const names = [...positions].sort(byOrder).map(name);
+    return names.length > max ? t("list.more", { list: names.slice(0, max).join(", "), n: names.length - max }) : names.join(", ");
+  };
+  return { name, list };
 }

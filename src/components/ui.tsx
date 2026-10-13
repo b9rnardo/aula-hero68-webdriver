@@ -1,250 +1,333 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { HelpIcon, InfoIcon } from "./icons";
+import { useId, useRef, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import { useI18n } from "../i18n";
+import { LETTERS, WASD } from "../lib/selection";
+import { useUi } from "../store/ui";
+import { Icon, type IconName } from "./icons";
+
+// Building blocks of the "Grafite Violeta" design. Rules for using them: docs/design-system.md.
 
 export const cx = (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(" ");
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  /** pri: the one main action of a view. sec: other actions. gh: low-emphasis actions and toolbars. */
+  variant?: "pri" | "sec" | "gh";
+  sm?: boolean;
+  /** Square icon-only button; needs an aria-label. */
+  ico?: boolean;
+};
 
-export function Button({
-  variant = "secondary",
-  size = "md",
-  className,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: "sm" | "md" | "lg" }) {
+export function Button({ variant = "sec", sm, ico, className, type = "button", ...props }: ButtonProps) {
+  return <button type={type} className={cx("btn", variant, sm && "sm", ico && "ico", className)} {...props} />;
+}
+
+export function Kbd({ children }: { children: ReactNode }) {
+  return <kbd className="k">{children}</kbd>;
+}
+
+/** Renders **bold** spans in a translated string. */
+export function Rich({ text }: { text: string }) {
   return (
-    <button
-      type="button"
-      className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-md font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-        size === "sm" && "h-8 px-3 text-sm",
-        size === "md" && "h-9 px-3.5 text-sm",
-        size === "lg" && "h-11 px-5 text-base",
-        variant === "primary" && "bg-accent text-accent-ink hover:bg-accent-hover",
-        variant === "secondary" && "bg-active text-fg hover:bg-[rgb(196_181_253/0.24)]",
-        variant === "ghost" && "text-muted hover:bg-hover hover:text-fg",
-        className,
-      )}
-      {...props}
-    />
+    <>
+      {text.split(/\*\*(.+?)\*\*/g).map((part, index) => (index % 2 ? <strong key={index}>{part}</strong> : part))}
+    </>
   );
 }
 
-/** Wootility-style settings card: flat panel, bold 20px title, muted description. */
+/**
+ * The "i" button. Explanations live in its tooltip, which opens on hover and on keyboard focus.
+ * `end` anchors the tooltip to the right edge, for buttons near the right side of a card.
+ */
+export function InfoTip({ label, children, end }: { label: string; children: ReactNode; end?: boolean }) {
+  const id = useId();
+  return (
+    <span className="info">
+      <button type="button" className="ib" aria-label={label} aria-describedby={id}>
+        <Icon name="info" size="xs" />
+      </button>
+      <span className={cx("tt", end && "end")} role="tooltip" id={id}>
+        {typeof children === "string" ? <Rich text={children} /> : children}
+      </span>
+    </span>
+  );
+}
+
+/** Title with its "i" button. */
+export function Title({ as: Tag = "h2", id, children, info, infoLabel }: { as?: "h2" | "h3" | "span"; id?: string; children: ReactNode; info?: ReactNode; infoLabel?: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="ttl">
+      <Tag id={id} className={Tag === "span" ? "lab" : "ct"}>
+        {children}
+      </Tag>
+      {info && <InfoTip label={infoLabel ?? t("info.about", { topic: typeof children === "string" ? children : "" })}>{info}</InfoTip>}
+    </div>
+  );
+}
+
 export function Card({
   title,
-  description,
-  actions,
+  info,
+  infoLabel,
+  sub,
+  aside,
   children,
   className,
-  highlight,
+  label,
 }: {
   title?: ReactNode;
-  description?: ReactNode;
-  actions?: ReactNode;
+  info?: ReactNode;
+  infoLabel?: string;
+  /** Short visible caption under the title (a status, not an explanation). */
+  sub?: ReactNode;
+  /** Right side of the header: a pill, a status or a small action. */
+  aside?: ReactNode;
   children?: ReactNode;
   className?: string;
-  /** Lighter surface for the card that deserves attention. */
-  highlight?: boolean;
+  /** Accessible name when the card has no visible title. */
+  label?: string;
 }) {
+  const id = useId();
   return (
-    <section className={cx("flex flex-col rounded-lg p-5", highlight ? "bg-field" : "bg-panel", className)}>
-      {(title || actions) && (
-        <header className="mb-2 flex items-start justify-between gap-3">
-          {title && <h3 className="text-xl leading-tight font-bold text-fg">{title}</h3>}
-          {actions}
-        </header>
+    <section className={cx("card", className)} aria-labelledby={title ? id : undefined} aria-label={title ? undefined : label}>
+      {(title || aside) && (
+        <div className="ch">
+          <div className="min-w-0">
+            {title && (
+              <Title id={id} info={info} infoLabel={infoLabel}>
+                {title}
+              </Title>
+            )}
+            {sub && <p className="cd">{sub}</p>}
+          </div>
+          {aside}
+        </div>
       )}
-      {description && <p className="mb-4 text-sm leading-relaxed text-muted">{description}</p>}
       {children}
     </section>
   );
 }
 
-/** Page section heading with optional help text and actions on the right. */
-export function SectionHeader({ title, help, actions }: { title: ReactNode; help?: string; actions?: ReactNode }) {
+export function Pill({ children, tone, icon, className }: { children: ReactNode; tone?: "hot" | "ok"; icon?: IconName; className?: string }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h2 className="flex items-center gap-2 text-2xl font-bold">
-        {title}
-        {help && (
-          <span title={help} className="text-subtle hover:text-muted">
-            <HelpIcon size={18} />
-            <span className="sr-only">{help}</span>
-          </span>
-        )}
-      </h2>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-    </div>
-  );
-}
-
-export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cx("eyebrow text-muted", className)}>{children}</p>;
-}
-
-/** Read-only on/off indicator styled like Wootility's toggle; null = mixed or unknown (thumb centered). */
-export function StateSwitch({ on, label }: { on: boolean | null; label: string }) {
-  return (
-    <span
-      role="img"
-      aria-label={label}
-      className={cx(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-        on ? "bg-accent" : on === null ? "bg-accent/35" : "bg-key-line",
-      )}
-    >
-      <span
-        className={cx(
-          "absolute size-3.5 rounded-full transition-all",
-          on ? "left-[18px] bg-accent-ink" : on === null ? "left-[11px] bg-fg-2" : "left-[3px] bg-fg-2",
-        )}
-      />
-    </span>
-  );
-}
-
-export function Badge({ children, tone = "default" }: { children: ReactNode; tone?: "default" | "accent" | "ok" | "warn" | "danger" }) {
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-bold whitespace-nowrap",
-        tone === "default" && "bg-active text-fg-2",
-        tone === "accent" && "bg-accent text-accent-ink",
-        tone === "ok" && "bg-ok/15 text-ok",
-        tone === "warn" && "bg-warn/15 text-warn",
-        tone === "danger" && "bg-danger/15 text-danger",
-      )}
-    >
+    <span className={cx("pill", tone, className)}>
+      {icon && <Icon name={icon} size="xs" />}
       {children}
     </span>
   );
 }
 
-/** Horizontal level bar (brightness, speed, sensitivity). */
-export function LevelBar({ value, max, label, left, right }: { value: number; max: number; label: string; left?: string; right?: string }) {
-  const percent = Math.max(0, Math.min(100, (value / max) * 100));
-  return (
-    <div>
-      <div
-        role="meter"
-        aria-label={label}
-        aria-valuenow={value}
-        aria-valuemin={0}
-        aria-valuemax={max}
-        className="relative h-1.5 rounded-full bg-key-line"
-      >
-        <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${percent}%` }} />
-        <div
-          className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-accent bg-accent-ink"
-          style={{ left: `${percent}%` }}
-        />
-      </div>
-      {(left || right) && (
-        <div className="mt-2 flex justify-between">
-          <span className="eyebrow text-subtle">{left}</span>
-          <span className="eyebrow text-subtle">{right}</span>
-        </div>
-      )}
-    </div>
-  );
+export function ReadOnlyPill() {
+  const { t } = useI18n();
+  return <Pill icon="lock">{t("common.readOnly")}</Pill>;
 }
 
-/** Row in a settings list; `selected` marks the current value. */
-/** One choice of a list; with `onSelect` it's a radio button (put the list in a `role="radiogroup"`). */
-export function OptionRow({
-  selected,
-  children,
-  onSelect,
-  disabled,
-}: {
-  selected: boolean;
-  children: ReactNode;
-  onSelect?: () => void;
+/** "Changed" tag next to a setting that has an unsaved change. */
+export function ChangedTag({ className }: { className?: string }) {
+  const { t } = useI18n();
+  return <span className={cx("chg", className)}>{t("common.changed")}</span>;
+}
+
+export interface SegOption<T> {
+  value: T;
+  label: ReactNode;
   disabled?: boolean;
+}
+
+/** Segmented control (radio group): one choice out of a few. Arrow keys move the choice. */
+export function Seg<T extends string | number>({
+  options,
+  value,
+  onChange,
+  label,
+  lg,
+  disabled,
+  className,
+}: {
+  options: SegOption<T>[];
+  /** null when the selected keys disagree: no option is checked. */
+  value: T | null;
+  onChange: (value: T) => void;
+  label: string;
+  lg?: boolean;
+  disabled?: boolean;
+  className?: string;
 }) {
-  const className = cx(
-    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm",
-    selected ? "bg-active font-semibold text-fg" : "bg-hover text-muted",
-    onSelect && !selected && "transition-colors enabled:hover:bg-active/60 enabled:hover:text-fg",
-    onSelect && "outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed",
+  const group = useRef<HTMLDivElement>(null);
+  const enabled = options.filter((option) => !option.disabled);
+  const focusIndex = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
   );
-  const content = (
-    <>
-      <span className={cx("grid size-4 shrink-0 place-items-center rounded-full", selected ? "bg-accent" : "border border-key-line")}>
-        {selected && <span className="size-1.5 rounded-full bg-accent-ink" />}
-      </span>
+  const onKeyDown = (event: KeyboardEvent) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (!step || disabled || !enabled.length) return;
+    event.preventDefault();
+    const current = enabled.findIndex((option) => option.value === value);
+    const next = enabled[(current + step + enabled.length) % enabled.length];
+    onChange(next.value);
+    const index = options.indexOf(next);
+    group.current?.querySelectorAll<HTMLButtonElement>("button")[index]?.focus();
+  };
+  return (
+    <div ref={group} className={cx("seg", lg && "lg", className)} role="radiogroup" aria-label={label} onKeyDown={onKeyDown}>
+      {options.map((option, index) => {
+        const on = option.value === value;
+        return (
+          <button
+            key={String(option.value)}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={index === focusIndex ? 0 : -1}
+            className={cx(on && "on")}
+            disabled={disabled || option.disabled}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Chip({ on, className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { on?: boolean }) {
+  return <button type="button" aria-pressed={on} className={cx("chip", on && "on", className)} {...props} />;
+}
+
+/** A warning or note placed right next to what it is about. */
+export function Note({ tone = "info", children, className, icon }: { tone?: "warn" | "bad" | "info"; children: ReactNode; className?: string; icon?: IconName }) {
+  return (
+    <div className={cx("note", tone, className)} role={tone === "bad" ? "alert" : "status"}>
+      <Icon name={icon ?? (tone === "info" ? "note" : "warn")} size="s" />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+export function Empty({ icon = "keyboard", title, children }: { icon?: IconName; title: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="empty">
+      <Icon name={icon} />
+      <p className="font-medium text-fg">{title}</p>
       {children}
-    </>
-  );
-  if (!onSelect)
-    return (
-      <li aria-current={selected || undefined} className={className}>
-        {content}
-      </li>
-    );
-  return (
-    <li>
-      <button type="button" role="radio" aria-checked={selected} disabled={disabled} onClick={onSelect} className={className}>
-        {content}
-      </button>
-    </li>
-  );
-}
-
-export function Notice({ children, icon, tone = "info" }: { children: ReactNode; icon?: ReactNode; tone?: "info" | "warn" | "danger" }) {
-  return (
-    <div
-      className={cx(
-        "flex gap-3 rounded-md p-3 text-sm leading-relaxed",
-        tone === "info" && "bg-active text-fg-2",
-        tone === "warn" && "bg-warn/10 text-warn",
-        tone === "danger" && "bg-danger/10 text-danger",
-      )}
-    >
-      {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
-      <div className="min-w-0">{children}</div>
     </div>
   );
 }
 
-export const InfoNotice = ({ children }: { children: ReactNode }) => <Notice icon={<InfoIcon size={16} />}>{children}</Notice>;
-
-/** Settings list row: title and description on the left, the value or control on the right. */
-export function SettingRow({ title, description, children }: { title: ReactNode; description?: ReactNode; children: ReactNode }) {
+/** Empty state for edit cards on pages with the keyboard: nothing selected yet. */
+export function SelectionEmpty() {
+  const { t } = useI18n();
+  const select = useUi((s) => s.select);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line py-4 first:pt-0 last:border-0 last:pb-0">
-      <div className="min-w-0 flex-1 basis-64">
-        <p className="text-sm font-bold">{title}</p>
-        {description && <p className="mt-0.5 text-sm leading-relaxed text-muted">{description}</p>}
+    <Empty title={t("selection.pick")}>
+      <div className="mt-1.5 flex flex-wrap justify-center gap-2">
+        <Button sm onClick={() => select(WASD)}>
+          {t("selection.selectWasd")}
+        </Button>
+        <Button sm onClick={() => select(LETTERS)}>
+          {t("selection.selectLetters")}
+        </Button>
+        <Button sm onClick={() => useUi.getState().selectAll()}>
+          {t("selection.selectAll")}
+        </Button>
       </div>
-      <div className="shrink-0">{children}</div>
+    </Empty>
+  );
+}
+
+/** On/off switch. Only for preferences of the app itself; keyboard settings use Check or Seg. */
+export function Switch({ on, onChange, label }: { on: boolean; onChange: (on: boolean) => void; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} className={cx("sw", on && "on")} onClick={() => onChange(!on)}>
+      <span className="th" />
+    </button>
+  );
+}
+
+/** Checkbox for keyboard settings. `checked` null means the value was not read. */
+export function Check({
+  checked,
+  onChange,
+  children,
+  disabled,
+  small,
+}: {
+  checked: boolean | null;
+  onChange: (checked: boolean) => void;
+  children: ReactNode;
+  disabled?: boolean;
+  small?: boolean;
+}) {
+  return (
+    <label className={cx("chk-l", small && "s")}>
+      <input
+        type="checkbox"
+        checked={checked ?? false}
+        ref={(input) => {
+          if (input) input.indeterminate = checked === null;
+        }}
+        disabled={disabled || checked === null}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span>{children}</span>
+    </label>
+  );
+}
+
+export function Swatch({ color, className }: { color: string; className?: string }) {
+  return <span className={cx("swatch", className)} style={{ background: color }} aria-hidden="true" />;
+}
+
+/** The padded, centered area under the stage (or the whole page when there is no stage). */
+export function PageBody({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className="page-body">
+      <div className={cx("page-wrap", className)}>{children}</div>
     </div>
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <p className="py-6 text-sm text-subtle">{children}</p>;
-}
-
-export function Swatch({ color, rainbow, size = 28 }: { color: string; rainbow?: boolean; size?: number }) {
+/** Page title for pages without the keyboard stage. */
+export function PageHeader({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
-    <span
-      className="inline-block shrink-0 rounded-md ring-1 ring-white/15"
-      style={{
-        width: size,
-        height: size,
-        background: rainbow ? "conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)" : color,
-      }}
-    />
+    <div className="ph">
+      <h1 className="h1">{title}</h1>
+      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+    </div>
   );
 }
 
-/** Label / value row for definition lists. */
-export function Row({ label, children, mono }: { label: ReactNode; children: ReactNode; mono?: boolean }) {
+export function Kpi({ label, value, unit, mono }: { label: ReactNode; value: ReactNode; unit?: ReactNode; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line py-2.5 last:border-0">
-      <dt className="text-sm text-muted">{label}</dt>
-      <dd className={cx("text-right text-sm font-semibold", mono && "font-mono text-[13px]")}>{children}</dd>
+    <div className="kpi">
+      <span className="cap">{label}</span>
+      <span className={cx("stat tabular-nums", mono && "font-mono")}>{value}</span>
+      {unit && <span className="cap">{unit}</span>}
     </div>
+  );
+}
+
+/** Label / value list. */
+export function Dl({ rows }: { rows: [ReactNode, ReactNode, boolean?][] }) {
+  return (
+    <dl className="dl">
+      {rows.map(([label, value, mono], index) => (
+        <div key={index} className="contents">
+          <dt>{label}</dt>
+          <dd className={cx("tabular-nums", mono && "font-mono text-xs")}>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Small "go to page" link at the bottom of an overview card. */
+export function Lnk({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" className="lnk" onClick={onClick}>
+      {children}
+      <Icon name="arrow" size="xs" />
+    </button>
   );
 }

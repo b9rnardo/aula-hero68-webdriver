@@ -1,99 +1,95 @@
 import { useState } from "react";
-import { Page } from "../components/KeyboardStage";
-import { Badge, Button, Card, cx, Empty } from "../components/ui";
+import { useShallow } from "zustand/react/shallow";
+import { Icon } from "../components/icons";
+import { Button, Card, Empty, Kbd, PageBody, PageHeader, Pill, Seg, Switch } from "../components/ui";
 import { toHex } from "../hid/protocol";
 import { useI18n, type Lang } from "../i18n";
+import { MOD } from "../lib/media";
+import { useDraft } from "../store/draft";
 import { useDriver } from "../store/driver";
+import { useUi } from "../store/ui";
 
-const LANGUAGES: { id: Lang; name: string }[] = [
-  { id: "pt", name: "Português (Brasil)" },
-  { id: "en", name: "English" },
+export const REPO_URL = "https://github.com/b9rnardo/aula-hero68-webdriver";
+
+const LANGUAGES: { value: Lang; label: string }[] = [
+  { value: "pt", label: "Português (Brasil)" },
+  { value: "en", label: "English" },
 ];
 
 export function InterfacePage() {
   const { t, lang } = useI18n();
   const setLang = useDriver((s) => s.setLang);
+  const { showValues, setShowValues } = useUi(useShallow((s) => ({ showValues: s.showValues, setShowValues: s.setShowValues })));
   return (
-    <div className="mx-auto max-w-3xl">
-      <Page title={t("interface.title")}>
-        <Card title={t("interface.language")} description={t("interface.languageDesc")}>
-          <div role="radiogroup" aria-label={t("interface.language")} className="grid gap-1.5 sm:grid-cols-2">
-            {LANGUAGES.map(({ id, name }) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={lang === id}
-                onClick={() => setLang(id)}
-                className={cx(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors",
-                  lang === id ? "bg-active font-semibold text-fg" : "bg-hover text-muted hover:text-fg",
-                )}
-              >
-                <span className={cx("grid size-4 shrink-0 place-items-center rounded-full", lang === id ? "bg-accent" : "border border-key-line")}>
-                  {lang === id && <span className="size-1.5 rounded-full bg-accent-ink" />}
-                </span>
-                {name}
-              </button>
-            ))}
+    <PageBody className="narrow">
+      <PageHeader title={t("nav.interface")} />
+      <div className="stack">
+        <Card title={t("ui.language")}>
+          <Seg lg label={t("ui.language")} value={lang} onChange={setLang} options={LANGUAGES} />
+        </Card>
+        <Card title={t("ui.stage")}>
+          <div className="check first">
+            <span className="flex-1">{t("ui.showValues")}</span>
+            <Switch on={showValues} onChange={setShowValues} label={t("ui.showValues")} />
           </div>
         </Card>
-      </Page>
-    </div>
+      </div>
+    </PageBody>
   );
 }
 
-const time = (at: number) =>
-  new Date(at).toLocaleTimeString(undefined, { hour12: false }) + "." + String(at % 1000).padStart(3, "0");
+const time = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour12: false }) + "." + String(at % 1000).padStart(3, "0");
 
 export function DiagnosticsPage() {
-  const { t } = useI18n();
-  const packets = useDriver((s) => s.packets);
-  const clear = useDriver((s) => s.clearPackets);
+  const { t, number } = useI18n();
+  const { packets, clear } = useDriver(useShallow((s) => ({ packets: s.packets, clear: s.clearPackets })));
+  const showToast = useDraft((s) => s.showToast);
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
     const text = packets.map((p) => `${time(p.at)} ${p.direction.toUpperCase()} ${toHex(p.bytes)}`).join("\n");
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      showToast({ tone: "bad", text: t("debug.copyFailed") });
+    }
   };
 
   return (
-    <Page
-      title={t("debug.title")}
-      actions={
-        <>
-          <Button variant="secondary" size="sm" onClick={copy} disabled={!packets.length}>
-            {copied ? t("action.copied") : t("action.copy")}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={clear} disabled={!packets.length}>
-            {t("action.clear")}
-          </Button>
-        </>
-      }
-    >
-      <Card description={t("debug.lead")}>
+    <PageBody>
+      <PageHeader title={t("nav.diagnostics")}>
+        <Button sm onClick={copy} disabled={!packets.length}>
+          <Icon name={copied ? "check" : "copy"} size="s" />
+          {copied ? t("action.copied") : t("action.copy")}
+        </Button>
+        <Button variant="gh" sm onClick={clear} disabled={!packets.length}>
+          <Icon name="trash" size="s" />
+          {t("action.clear")}
+        </Button>
+      </PageHeader>
+      <Card title={t("debug.title")} info={t("debug.info")} aside={<Pill className="tabular-nums">{number(packets.length)}</Pill>}>
         {packets.length === 0 ? (
-          <Empty>{t("debug.empty")}</Empty>
+          <Empty icon="diagnostics" title={t("debug.empty")} />
         ) : (
-          <div className="max-h-[65vh] overflow-auto rounded-md bg-app">
-            <table className="w-full text-left font-mono text-xs">
-              <thead className="sticky top-0 bg-field text-muted">
+          <div className="log">
+            <table>
+              <thead>
                 <tr>
-                  <th className="px-3 py-2 font-semibold">{t("debug.time")}</th>
-                  <th className="px-3 py-2 font-semibold">{t("debug.dir")}</th>
-                  <th className="px-3 py-2 font-semibold">{t("debug.bytes")}</th>
+                  <th scope="col">{t("debug.time")}</th>
+                  <th scope="col">{t("debug.dir")}</th>
+                  <th scope="col">{t("debug.bytes")}</th>
                 </tr>
               </thead>
               <tbody>
                 {packets.map((packet) => (
-                  <tr key={packet.id} className="border-t border-line align-top">
-                    <td className="px-3 py-1.5 whitespace-nowrap text-subtle">{time(packet.at)}</td>
-                    <td className="px-3 py-1.5">
-                      <Badge tone={packet.direction === "tx" ? "accent" : "ok"}>{packet.direction.toUpperCase()}</Badge>
+                  <tr key={packet.id}>
+                    <td className="whitespace-nowrap text-muted">{time(packet.at)}</td>
+                    <td>
+                      <Pill tone={packet.direction === "tx" ? "hot" : "ok"}>{packet.direction.toUpperCase()}</Pill>
                     </td>
-                    <td className="px-3 py-1.5 break-all text-fg-2">{toHex(packet.bytes)}</td>
+                    <td className="break-all text-fg-2">{toHex(packet.bytes)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -101,32 +97,64 @@ export function DiagnosticsPage() {
           </div>
         )}
       </Card>
-    </Page>
+    </PageBody>
   );
 }
 
+const CONNECT = ["help.connect1", "help.connect2", "help.connect3", "help.connect4"] as const;
+
 export function HelpPage() {
   const { t } = useI18n();
+  const shortcuts: [string[], string][] = [
+    [[MOD, "K"], t("help.keyPalette")],
+    [[MOD, "S"], t("help.keySave")],
+    [[MOD, "Z"], t("help.keyUndo")],
+    [[MOD, "A"], t("help.keySelectAll")],
+    [[t("help.click")], t("help.keyToggle")],
+    [["Shift", t("help.click")], t("help.keyRange")],
+    [[t("help.drag")], t("help.keyDrag")],
+    [[t("help.doubleClick")], t("help.keySame")],
+    [["Esc"], t("help.keyEsc")],
+  ];
   return (
-    <div className="mx-auto max-w-3xl">
-      <Page title={t("help.title")}>
-        <div className="space-y-4">
-          <Card title={t("help.connectTitle")}>
-            <ol className="space-y-3">
-              {(["help.connect1", "help.connect2", "help.connect3", "help.connect4"] as const).map((key, index) => (
-                <li key={key} className="flex gap-3 text-sm leading-relaxed text-fg-2">
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-active text-xs font-bold text-accent">{index + 1}</span>
-                  {t(key)}
-                </li>
-              ))}
-            </ol>
-          </Card>
-          <Card title={t("help.aboutTitle")}>
-            <p className="text-sm leading-relaxed text-fg-2">{t("help.about")}</p>
-            <p className="mt-3 text-xs text-subtle">{t("app.unofficial")}</p>
-          </Card>
-        </div>
-      </Page>
-    </div>
+    <PageBody className="narrow">
+      <PageHeader title={t("nav.help")} />
+      <div className="stack">
+        <Card title={t("help.connectTitle")}>
+          <ol className="steps mb-0">
+            {CONNECT.map((key, index) => (
+              <li key={key}>
+                <span className="stn" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <span>{t(key)}</span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+        <Card title={t("help.shortcuts")}>
+          <dl className="dl">
+            {shortcuts.map(([keys, label]) => (
+              <div key={label} className="contents">
+                <dt>{label}</dt>
+                <dd className="flex flex-wrap gap-1">
+                  {keys.map((key) => (
+                    <Kbd key={key}>{key}</Kbd>
+                  ))}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
+        <Card title={t("help.aboutTitle")}>
+          <p className="mt-0 mb-3 text-fg-2">{t("help.about")}</p>
+          <p className="cap mt-0 mb-4">{t("app.unofficial")}</p>
+          <a className="btn sec" href={REPO_URL} target="_blank" rel="noopener noreferrer">
+            <Icon name="github" size="s" />
+            {t("help.github")}
+          </a>
+        </Card>
+      </div>
+    </PageBody>
   );
 }

@@ -1,109 +1,119 @@
-import { useId } from "react";
+import { useI18n } from "../i18n";
 
-interface Props {
-  travelUm: number;
-  /** Depth to press the key to; null leaves it at rest. */
-  valueUm: number | null;
-  label: string;
-}
-
-/** Drawing scale: the full switch travel moves the keycap this many units (exaggerated so small values show). */
-const PRESS_UNITS = 40;
-const SPRING_TOP = 112;
-const SPRING_BOTTOM = 190;
-const MOTION = "transform 140ms ease-out";
-
-const KEYCAP = "M30 52 L39 14 Q40 10 44 10 Q88 17 132 10 Q136 10 137 14 L146 52 Q146 54 144 54 L32 54 Q30 54 30 52 Z";
-
-/** Spring at rest length, compressed with a vertical scale anchored on the housing floor. */
+// Side view of a magnetic switch: the stem goes down to the actuation point, where the magnet is close
+// enough to the Hall sensor. 30 px per mm; the slider's bottom rests on y = 104 and the floor is y = 240.
+const PX_PER_MM = 30;
+const TOP = 104;
+const FLOOR = 240;
+const SPAN = FLOOR - TOP;
 const SPRING = (() => {
-  const turns = 14;
-  const step = (SPRING_BOTTOM - SPRING_TOP) / turns;
-  let d = `M66 ${SPRING_TOP}`;
-  for (let i = 1; i <= turns; i++) d += ` L${i % 2 ? 110 : 66} ${SPRING_TOP + i * step}`;
+  let d = "M140 0";
+  for (let i = 1; i <= 12; i++) d += ` L${i % 2 ? 236 : 140} ${((SPAN * i) / 12).toFixed(1)}`;
   return d;
 })();
 
-/**
- * Side view of a magnetic (Hall effect) switch pressed to the given depth: keycap, stem with magnet,
- * spring, translucent housing and the sensor on the PCB, which glows as the magnet gets closer.
- */
-export function SwitchDiagram({ travelUm, valueUm, label }: Props) {
-  const id = useId();
-  const fraction = valueUm === null ? 0 : Math.max(0, Math.min(1, valueUm / travelUm));
-  const press = fraction * PRESS_UNITS;
-  const moving = { transform: `translateY(${press}px)`, transition: MOTION };
-  const springScale = (SPRING_BOTTOM - SPRING_TOP - press) / (SPRING_BOTTOM - SPRING_TOP);
+export function SwitchDiagram({
+  minUm,
+  maxUm,
+  travelUm,
+  savedUm,
+}: {
+  /** Actuation range of the selected keys; null when nothing is selected (switch at rest). */
+  minUm: number | null;
+  maxUm: number | null;
+  travelUm: number;
+  /** Keyboard value, drawn as a tick when the selection has an unsaved change. */
+  savedUm?: number | null;
+}) {
+  const { t, mm, number } = useI18n();
+  const on = minUm !== null && maxUm !== null;
+  const lo = on ? minUm / 1000 : 0;
+  const hi = on ? maxUm / 1000 : 0;
+  const travel = travelUm / 1000;
+  const mixed = on && lo !== hi;
+  const y = (value: number) => TOP + value * PX_PER_MM;
+  const dy = lo * PX_PER_MM;
+  const pillY = !on ? -100 : mixed ? (y(lo) + y(hi)) / 2 : y(lo);
+  const endY = y(travel);
+
+  const marks: number[] = [];
+  for (let i = 0; i / 2 <= travel + 1e-6; i++) marks.push(i / 2);
+  if (marks[marks.length - 1] < travel - 1e-6) marks.push(travel);
+  const ticks = marks.map((value) => {
+    const ty = y(value);
+    const end = Math.abs(value - travel) < 1e-6;
+    const major = end || value % 1 === 0;
+    return { value, y: ty, major, show: major && Math.abs(ty - pillY) >= 14 && (end || Math.abs(ty - endY) >= 14) };
+  });
+
+  const aria = !on
+    ? t("diagram.rest")
+    : mixed
+      ? t("diagram.mixed", { min: mm(minUm), max: mm(maxUm), travel: mm(travelUm) })
+      : t("diagram.single", { value: mm(minUm), travel: mm(travelUm) });
 
   return (
-    <svg viewBox="0 0 176 220" className="h-42 w-auto min-w-0 shrink" role="img" aria-label={label}>
-      <defs>
-        <linearGradient id={`${id}cap`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style={{ stopColor: "#41365c" }} />
-          <stop offset="1" style={{ stopColor: "var(--color-key)" }} />
-        </linearGradient>
-        <linearGradient id={`${id}magnet`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" style={{ stopColor: "var(--color-accent)" }} />
-          <stop offset="1" style={{ stopColor: "var(--color-glow)" }} />
-        </linearGradient>
-        <radialGradient id={`${id}glow`}>
-          <stop offset="0" style={{ stopColor: "var(--color-glow)", stopOpacity: 0.9 }} />
-          <stop offset="1" style={{ stopColor: "var(--color-glow)", stopOpacity: 0 }} />
-        </radialGradient>
-      </defs>
-
-      {/* PCB and Hall sensor */}
-      <circle cx="88" cy="197" r="30" fill={`url(#${id}glow)`} style={{ opacity: 0.12 + 0.88 * fraction, transition: "opacity 140ms ease-out" }} />
-      <rect x="8" y="201" width="160" height="9" rx="2" className="fill-panel stroke-key-line" />
-      <rect x="54" y="190" width="3" height="11" className="fill-subtle" />
-      <rect x="119" y="190" width="3" height="11" className="fill-subtle" />
-      <rect x="78" y="193" width="20" height="8" rx="1.5" className="fill-key-line stroke-accent" strokeWidth="1" />
-
-      {/* Stem, magnet and spring, seen through the housing */}
-      <g style={moving}>
-        <rect x="80" y="54" width="16" height="84" rx="2" className="fill-accent/85" />
-        <rect x="68" y="106" width="40" height="6" rx="1.5" className="fill-accent/85" />
-        <rect x="77" y="136" width="22" height="12" rx="2" fill={`url(#${id}magnet)`} />
+    <svg viewBox="0 0 340 284" role="img" aria-label={aria} className="mx-auto block h-auto w-full max-w-[400px]">
+      <rect x="112" y="64" width="152" height="188" rx="6" className="sw-house" />
+      <path d={SPRING} className="sw-spring" style={{ transform: `translateY(${TOP + dy}px) scaleY(${((SPAN - dy) / SPAN).toFixed(4)})` }} />
+      <g className="sw-move" style={{ transform: `translateY(${dy}px)` }}>
+        <rect x="176" y="20" width="24" height="60" rx="3" className="sw-stem" />
+        <rect x="128" y="80" width="120" height="24" rx="4" className="sw-slider" />
+        <rect x="176" y="104" width="24" height="6" className="sw-n" />
+        <rect x="176" y="110" width="24" height="6" className="sw-s" />
+        <line x1="80" x2="128" y1="92" y2="92" className="sw-lead" />
+        <text x="8" y="96" className="sw-lbl">
+          {t("diagram.stem")}
+        </text>
       </g>
-      <path
-        d={SPRING}
-        fill="none"
-        className="stroke-muted"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-        style={{ transform: `scaleY(${springScale})`, transformOrigin: `88px ${SPRING_BOTTOM}px`, transition: MOTION, opacity: 0.75 }}
-      />
-
-      {/* Housing (translucent) */}
-      <path d="M52 100 L124 100 L136 131 L40 131 Z" className="fill-accent/[0.07] stroke-key-line" strokeWidth="1.5" strokeLinejoin="round" />
-      <rect x="40" y="134" width="96" height="57" rx="5" className="fill-accent/[0.07] stroke-key-line" strokeWidth="1.5" />
-      <rect x="34" y="130" width="108" height="5" rx="1.5" className="fill-key stroke-key-line" strokeWidth="1.5" />
-
-      {/* Keycap at rest (ghost) and pressed */}
-      {press > 0.5 && <path d={KEYCAP} fill="none" className="stroke-subtle" strokeWidth="1" strokeDasharray="3 3" />}
-      <g style={moving}>
-        <path d={KEYCAP} fill={`url(#${id}cap)`} className="stroke-key-line" strokeWidth="1.5" strokeLinejoin="round" />
-        <path d="M46 13.5 Q88 20 130 13.5" fill="none" stroke="white" strokeOpacity="0.12" strokeWidth="1.5" strokeLinecap="round" />
-      </g>
-
-      {/* Depth from rest to the actuation point */}
-      {press > 0.5 && (
-        <g className="stroke-accent" strokeWidth="1.2" strokeLinecap="round" fill="none">
-          <line x1="10" y1="10" x2="36" y2="10" strokeDasharray="2 3" />
-          <line
-            x1="16"
-            y1="10"
-            x2="16"
-            y2={10 + PRESS_UNITS}
-            vectorEffect="non-scaling-stroke"
-            style={{ transform: `scaleY(${fraction})`, transformOrigin: "16px 10px", transition: MOTION }}
-          />
-          <g style={moving}>
-            <line x1="10" y1="10" x2="36" y2="10" />
-            {press >= 8 && <path d="M13 7 L16 10 L19 7" />}
-          </g>
+      <rect x="112" y="64" width="62" height="12" rx="4" className="sw-plate" />
+      <rect x="202" y="64" width="62" height="12" rx="4" className="sw-plate" />
+      <rect x="112" y="240" width="152" height="12" rx="4" className="sw-plate" />
+      <rect x="112" y="64" width="152" height="188" rx="6" className="sw-outline" />
+      <rect x="92" y="262" width="192" height="10" rx="3" className="sw-pcb" />
+      <rect x="176" y="254" width="24" height="8" rx="2" style={{ fill: on ? "#a48bff" : "#9e96b3" }} />
+      <line x1="44" x2="140" y1="228" y2="228" className="sw-lead" />
+      <text x="8" y="232" className="sw-lbl">
+        {t("diagram.spring")}
+      </text>
+      <line x1="80" x2="176" y1="258" y2="258" className="sw-lead" />
+      <text x="8" y="262" className="sw-lbl">
+        {t("diagram.sensor")}
+      </text>
+      <text x="298" y="94" className="sw-tl">
+        mm
+      </text>
+      <line x1="284" x2="284" y1="104" y2={endY} className="sw-axis" />
+      {ticks.map((tick) => (
+        <g key={tick.value}>
+          <line x1="284" x2={tick.major ? 292 : 288} y1={tick.y} y2={tick.y} className="sw-tick" />
+          {tick.show && (
+            <text x="298" y={tick.y + 4} className="sw-tl">
+              {number(tick.value)}
+            </text>
+          )}
         </g>
+      ))}
+      {on && savedUm != null && <line x1="276" x2="292" y1={y(savedUm / 1000)} y2={y(savedUm / 1000)} className="sw-saved" />}
+      {on && !mixed && (
+        <g className="sw-move" style={{ transform: `translateY(${y(lo)}px)` }}>
+          <line x1="104" x2="292" y1="0" y2="0" className="sw-act" />
+          <rect x="294" y="-10" width="44" height="20" rx="6" className="sw-pill" />
+          <text x="316" y="4" className="sw-pt">
+            {mm(minUm)}
+          </text>
+        </g>
+      )}
+      {mixed && (
+        <>
+          <line x1="104" x2="292" y1={y(lo)} y2={y(lo)} className="sw-act" />
+          <line x1="104" x2="292" y1={y(hi)} y2={y(hi)} className="sw-act" />
+          <rect x="280" y={y(lo)} width="8" height={Math.max(3, (hi - lo) * PX_PER_MM)} rx="2" className="sw-band" />
+          <rect x="294" y={pillY - 10} width="44" height="20" rx="6" className="sw-pill" />
+          <text x="316" y={pillY + 4} className="sw-pt">
+            {t("common.mixed")}
+          </text>
+        </>
       )}
     </svg>
   );

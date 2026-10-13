@@ -1,117 +1,231 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type MouseEvent, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { LayoutKey } from "../data/layout";
-import { LAYER_COUNT } from "../hid/hero68";
-import { useI18n, type MessageKey } from "../i18n";
+import { LAYOUT, LAYOUT_HEIGHT, LAYOUT_WIDTH, type LayoutKey } from "../data/layout";
+import { useI18n } from "../i18n";
+import { useKeyNames } from "../lib/keys";
+import { ALL, LETTERS, ORDER, sameSet, WASD } from "../lib/selection";
 import { useUi } from "../store/ui";
-import { KeyboardView, type KeyCap } from "./KeyboardView";
-import { Button, cx, SectionHeader } from "./ui";
+import { Chip, cx, InfoTip, Kbd, Switch, Button } from "./ui";
 
-const LAYER_NAMES: MessageKey[] = ["layers.0", "layers.1", "layers.2"];
-
-function LayersPanel({ vertical }: { vertical?: boolean }) {
-  const { t } = useI18n();
-  const { layer, setLayer } = useUi(useShallow((s) => ({ layer: s.layer, setLayer: s.setLayer })));
-  return (
-    <div className={vertical ? "w-44 shrink-0" : ""}>
-      <p className="eyebrow mb-2 flex items-center gap-1.5 text-muted" title={t("layers.help")}>
-        {t("layers.title")}
-      </p>
-      <div role="radiogroup" aria-label={t("layers.title")} className={cx("gap-1", vertical ? "flex flex-col" : "flex flex-wrap")}>
-        {Array.from({ length: LAYER_COUNT }, (_, index) => (
-          <button
-            key={index}
-            type="button"
-            role="radio"
-            aria-checked={layer === index}
-            onClick={() => setLayer(index)}
-            className={cx(
-              "rounded-md px-3 py-1.5 text-left text-sm font-semibold transition-colors",
-              layer === index ? "bg-active text-fg" : "text-muted hover:bg-hover hover:text-fg",
-            )}
-          >
-            {t(LAYER_NAMES[index])}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+/** What a key shows on the stage. */
+export interface KeyCap {
+  legend: string;
+  /** Second line: the key's value on this page. Hidden when "Values" is off. */
+  value?: string;
+  /** Background tint encoding the value. */
+  bg?: string;
+  /** Legend in violet: the key does something else than its print (remap). */
+  alt?: boolean;
+  /** Has an unsaved change. */
+  dirty?: boolean;
+  dim?: boolean;
+  /** Spoken value, for the key's accessible name. */
+  desc: string;
 }
 
-/** The keyboard at the top of a page, with the layer list and the selection count. */
-export function KeyboardStage({ render, label, layers }: { render: (key: LayoutKey) => KeyCap; label: string; layers?: boolean }) {
+export interface QuickChip {
+  label: string;
+  positions: number[];
+}
+
+// Tints are mixed from the key color toward a hue, so the value reads at a glance.
+const KEY_RGB = [35, 30, 46];
+const VIOLET = [164, 139, 255];
+const STEEL = [92, 110, 150];
+export const mixColor = (color: number[], alpha: number) =>
+  `rgb(${KEY_RGB.map((base, i) => Math.round(base + (color[i] - base) * alpha)).join(", ")})`;
+/** Actuation: violet when more sensitive than 1 mm, steel when firmer. */
+export function actTint(um: number) {
+  const v = um / 1000;
+  if (v < 1) return mixColor(VIOLET, ((1 - v) / 0.9) * 0.42);
+  if (v > 1) return mixColor(STEEL, Math.min(1, (v - 1) / 3) * 0.55 + 0.08);
+  return undefined;
+}
+/** Rapid Trigger on: stronger violet for more sensitive presses. */
+export const rtTint = (pressUm: number) => mixColor(VIOLET, 0.16 + (1 - Math.min(pressUm / 1000, 1)) * 0.24);
+export const hexRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+/**
+ * The sticky keyboard at the top of editing pages: page title, quick selections, the keys and the
+ * selection summary. Click selects, drag paints, Shift + click adds a range, double click picks every
+ * key with the same value.
+ */
+export function KeyboardStage({
+  title,
+  extra,
+  render,
+  sameValue,
+  chips = [],
+  legend,
+  values,
+}: {
+  title: string;
+  /** Next to the title: layer or mode switcher. */
+  extra?: ReactNode;
+  render: (key: LayoutKey) => KeyCap;
+  /** Value compared on double click. */
+  sameValue?: (pos: number) => string | number | undefined;
+  /** Page-specific quick selections, after Letters. */
+  chips?: QuickChip[];
+  legend?: ReactNode;
+  /** Offer the "Values" switch. */
+  values?: boolean;
+}) {
   const { t } = useI18n();
-  const { selected, select } = useUi(useShallow((s) => ({ selected: s.selected, select: s.select })));
+  const names = useKeyNames();
+  const { selected, select, showValues, setShowValues } = useUi(
+    useShallow((s) => ({ selected: s.selected, select: s.select, showValues: s.showValues, setShowValues: s.setShowValues })),
+  );
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const count = selected.length;
+  const drag = useRef<{ add: boolean; start: number } | null>(null);
+  const moved = useRef(false);
+
+  useEffect(() => {
+    const end = () => {
+      drag.current = null;
+      setTimeout(() => (moved.current = false), 0);
+    };
+    window.addEventListener("mouseup", end);
+    return () => window.removeEventListener("mouseup", end);
+  }, []);
+
+  const paint = (pos: number) => {
+    const current = drag.current;
+    if (!current) return;
+    moved.current = true;
+    select([current.start, pos], current.add ? "add" : "remove");
+  };
+
+  const click = (pos: number, event: MouseEvent) => {
+    if (moved.current) {
+      moved.current = false;
+      return;
+    }
+    const { anchor, setAnchor, toggle } = useUi.getState();
+    if (event.shiftKey && anchor !== null) {
+      const [a, b] = [ORDER.get(anchor)!, ORDER.get(pos)!].sort((x, y) => x - y);
+      select(
+        LAYOUT.slice(a, b + 1).map((key) => key.pos),
+        "add",
+      );
+    } else toggle(pos);
+    setAnchor(pos);
+  };
+
+  const pickSame = (pos: number) => {
+    if (!sameValue) return;
+    const value = sameValue(pos);
+    if (value === undefined) return;
+    select(ALL.filter((p) => sameValue(p) === value));
+  };
+
+  const quick: QuickChip[] = [
+    { label: t("selection.all"), positions: ALL },
+    { label: "W A S D", positions: WASD },
+    { label: t("selection.letters"), positions: LETTERS },
+    ...chips,
+  ];
+
+  const n = selected.length;
+  const summary =
+    n === 0
+      ? t("selection.none")
+      : n === ALL.length
+        ? t("selection.everything", { n })
+        : `${t(n === 1 ? "selection.one" : "selection.many", { n })}: ${names.list(selected, 10)}`;
 
   return (
-    <section className="rounded-lg bg-panel p-4 sm:p-5">
-      {layers && (
-        <div className="mb-4 xl:hidden">
-          <LayersPanel />
-        </div>
-      )}
-      <div className="flex gap-6">
-        {layers && (
-          <div className="hidden xl:block">
-            <LayersPanel vertical />
+    <section className="stage" aria-label={t("stage.label")}>
+      <div className="page-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3.5">
+            <h1 className="h1 s">{title}</h1>
+            {extra}
           </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <KeyboardView render={render} label={label} selected={selectedSet} onSelect={select} />
-          <p aria-live="polite" className={cx("mt-3 text-center", count ? "eyebrow text-sm text-accent" : "text-sm text-subtle")}>
-            {count === 0 ? t("selection.hint") : count === 1 ? t("selection.one") : t("selection.count", { n: count })}
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label={t("selection.quick")}>
+            <span className="cap hide-s mr-0.5">{t("selection.select")}</span>
+            {quick.map((chip) => (
+              <Chip
+                key={chip.label}
+                on={chip.positions.length > 0 && sameSet(selected, chip.positions)}
+                disabled={chip.positions.length === 0}
+                onClick={() => select(chip.positions)}
+              >
+                {chip.label}
+              </Chip>
+            ))}
+            <Chip on={false} onClick={() => select(ALL.filter((pos) => !selectedSet.has(pos)))}>
+              {t("selection.invert")}
+            </Chip>
+            <Button variant="gh" sm onClick={() => useUi.getState().clear()} disabled={n === 0}>
+              {t("selection.clear")} <Kbd>Esc</Kbd>
+            </Button>
+          </div>
+        </div>
+
+        <div className="plate">
+          <div className="kb" role="group" aria-label={t("stage.keys")} style={{ aspectRatio: `${LAYOUT_WIDTH} / ${LAYOUT_HEIGHT}` }}>
+            {LAYOUT.map((key) => {
+              const cap = render(key);
+              const on = selectedSet.has(key.pos);
+              return (
+                <div
+                  key={key.pos}
+                  className="kw"
+                  style={{
+                    left: `${(key.x / LAYOUT_WIDTH) * 100}%`,
+                    top: `${(key.y / LAYOUT_HEIGHT) * 100}%`,
+                    width: `${(key.w / LAYOUT_WIDTH) * 100}%`,
+                    height: `${(key.h / LAYOUT_HEIGHT) * 100}%`,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={cx("key", on && "sel", cap.alt && "alt", cap.dim && "dim")}
+                    style={cap.bg ? { backgroundColor: cap.bg } : undefined}
+                    aria-pressed={on}
+                    aria-label={`${names.name(key.pos)}, ${cap.desc}${cap.dirty ? `, ${t("stage.unsaved")}` : ""}`}
+                    onMouseDown={(event) => {
+                      if (event.button !== 0) return;
+                      drag.current = { add: !on, start: key.pos };
+                      moved.current = false;
+                    }}
+                    onMouseEnter={() => paint(key.pos)}
+                    onClick={(event) => click(key.pos, event)}
+                    onDoubleClick={() => pickSame(key.pos)}
+                  >
+                    <span className="lg">{cap.legend}</span>
+                    <span className="vl">{values && !showValues ? "" : cap.value}</span>
+                    {cap.dirty && <span className="dot" aria-hidden="true" />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mx-auto flex max-w-[740px] flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="ttl">
+            <InfoTip label={t("selection.howLabel")}>{t("selection.how")}</InfoTip>
+            <p className="selt" role="status" aria-live="polite">
+              {summary}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            {legend}
+            <span className="legend">
+              <span className="ldot" />
+              {t("stage.unsavedLegend")}
+            </span>
+            {values && (
+              <span className="legend">
+                {t("stage.values")}
+                <Switch on={showValues} onChange={setShowValues} label={t("stage.valuesLabel")} />
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </section>
-  );
-}
-
-export function SelectionActions() {
-  const { t } = useI18n();
-  const { count, selectAll, clear } = useUi(useShallow((s) => ({ count: s.selected.length, selectAll: s.selectAll, clear: s.clear })));
-  return (
-    <>
-      <Button variant="secondary" size="sm" onClick={selectAll}>
-        {t("action.selectAll")}
-      </Button>
-      <Button variant="ghost" size="sm" onClick={clear} disabled={count === 0}>
-        {t("action.clearSelection")}
-      </Button>
-    </>
-  );
-}
-
-/**
- * Page frame: optional keyboard stage (sticky on tall desktop screens, like Wootility),
- * then the section heading and the cards.
- */
-export function Page({
-  stage,
-  title,
-  help,
-  actions,
-  children,
-}: {
-  stage?: ReactNode;
-  title: ReactNode;
-  help?: string;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <>
-      {stage && (
-        <div className="z-10 bg-app pt-4 pb-6 sm:pt-6 lg:[@media(min-height:860px)]:sticky lg:[@media(min-height:860px)]:top-0">
-          {stage}
-        </div>
-      )}
-      <div className={cx("pb-12", !stage && "pt-6")}>
-        <SectionHeader title={title} help={help} actions={actions} />
-        {children}
-      </div>
-    </>
   );
 }

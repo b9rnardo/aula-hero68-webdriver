@@ -1,40 +1,60 @@
 import { useShallow } from "zustand/react/shallow";
-import { PlugIcon } from "../components/icons";
-import { KeyboardView } from "../components/KeyboardView";
-import { Button, Notice } from "../components/ui";
-import { keyLegend } from "../data/keycodes";
+import { Icon } from "../components/icons";
+import { Button, cx, Note } from "../components/ui";
+import { LAYOUT } from "../data/layout";
 import { isWebHidSupported } from "../hid/devices";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
+import { pickBackup } from "../lib/backup";
+import { WASD } from "../lib/selection";
 import { useDriver } from "../store/driver";
-import { OpenBackupButton } from "./ProfilesPage";
+import { useStepLabel } from "./common";
 
-const TIPS: [MessageKey, MessageKey][] = [
-  ["welcome.tipCableTitle", "welcome.tipCable"],
-  ["welcome.tipCloseTitle", "welcome.tipClose"],
-  ["welcome.tipBackupTitle", "welcome.tipBackup"],
-];
-const LAYER_NAMES: MessageKey[] = ["layers.0", "layers.1", "layers.2"];
+const WIDTH = Math.max(...LAYOUT.map((key) => key.x + key.w));
+const HEIGHT = Math.max(...LAYOUT.map((key) => key.y + key.h));
+const UDEV_RULE = 'SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", ATTRS{idProduct}=="103e", MODE="0660", TAG+="uaccess"';
 
-function Progress() {
-  const { t } = useI18n();
-  const progress = useDriver((s) => s.progress);
-  const [step, layer] = (progress?.step ?? "uuid").split(".");
-  const label = t(`progress.step.${step}` as MessageKey) + (layer ? ` · ${t(LAYER_NAMES[Number(layer)])}` : "");
-  const percent = progress ? Math.round((progress.done / progress.total) * 100) : 0;
+/** Keyboard outline with W A S D lit. */
+function Silhouette() {
   return (
-    <div className="mx-auto w-full max-w-md rounded-lg bg-panel p-6" role="status" aria-live="polite">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="font-bold">{t("progress.reading")}</span>
-        <span className="text-sm font-bold text-accent">{percent}%</span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-key-line">
-        <div className="h-full rounded-full bg-accent shadow-[0_0_10px_var(--color-glow)] transition-[width] duration-300" style={{ width: `${percent}%` }} />
-      </div>
-      <p className="mt-3 text-sm text-muted">{label}</p>
+    <div className="sil mb-8 max-w-[520px]" aria-hidden="true">
+      {LAYOUT.map((key) => (
+        <span
+          key={key.pos}
+          className={cx(WASD.includes(key.pos) && "hot")}
+          style={{
+            left: `${(key.x / WIDTH) * 100}%`,
+            top: `${(key.y / HEIGHT) * 100}%`,
+            width: `${(key.w / WIDTH) * 100}%`,
+            height: `${(key.h / HEIGHT) * 100}%`,
+          }}
+        >
+          <i />
+        </span>
+      ))}
     </div>
   );
 }
 
+function Progress() {
+  const { t } = useI18n();
+  const progress = useDriver((s) => s.progress);
+  const label = useStepLabel()(progress?.step ?? "uuid");
+  const percent = progress ? Math.round((progress.done / progress.total) * 100) : 0;
+  return (
+    <div role="status" aria-live="polite">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="font-semibold">{t("progress.reading")}</span>
+        <span className="font-mono text-accent-light tabular-nums">{percent}%</span>
+      </div>
+      <div className="prog" role="progressbar" aria-label={t("progress.reading")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+        <div style={{ width: `${percent}%` }} />
+      </div>
+      <p className="cap mt-3 mb-0">{label}</p>
+    </div>
+  );
+}
+
+/** Shown on data pages until there is something to show: a keyboard, a backup or the demo. */
 export function WelcomePage() {
   const { t } = useI18n();
   const { status, connect, startDemo } = useDriver(useShallow((s) => ({ status: s.status, connect: s.connect, startDemo: s.startDemo })));
@@ -42,45 +62,96 @@ export function WelcomePage() {
   const busy = status === "connecting" || status === "reading";
 
   return (
-    <div className="flex flex-col items-center py-10 text-center sm:py-14">
-      <div className="pointer-events-none hidden w-full max-w-3xl opacity-70 sm:block [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" aria-hidden>
-        <KeyboardView label="" render={(key) => ({ legend: keyLegend(key.defaults[0]) })} />
-      </div>
-      <h1 className="text-3xl sm:-mt-6 font-bold tracking-tight sm:text-4xl">{t("welcome.title")}</h1>
-      <p className="mt-3 max-w-xl text-base leading-relaxed text-muted">{t("welcome.lead")}</p>
+    <div className="flex min-h-full flex-col">
+      <div className="welcome">
+        <Silhouette />
+        <h1>{t("welcome.title")}</h1>
+        <p className="lead">{t("welcome.lead")}</p>
 
-      {busy ? (
-        <div className="mt-8 w-full">
-          <Progress />
-        </div>
-      ) : (
-        <>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button variant="primary" size="lg" onClick={() => void connect()} disabled={!supported}>
-              <PlugIcon size={18} />
-              {t("action.connect")}
-            </Button>
-            <OpenBackupButton size="lg" />
-            <Button variant="ghost" size="lg" onClick={startDemo}>
-              {t("action.demo")}
-            </Button>
+        <section className="wcard" aria-labelledby="welcome-start">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="welcome-start" className="ct">
+              {t("welcome.before")}
+            </h2>
+            <span className={cx("chk", supported ? "ok" : "bad")} role="status">
+              <Icon name={supported ? "check" : "x"} size="s" />
+              {t(supported ? "welcome.browserOk" : "welcome.browserBad")}
+            </span>
           </div>
-          {!supported && (
-            <div className="mt-6 w-full max-w-xl text-left">
-              <Notice tone="warn">{window.isSecureContext ? t("welcome.unsupported") : t("welcome.insecure")}</Notice>
-            </div>
-          )}
-        </>
-      )}
 
-      <ul className="mt-12 grid w-full max-w-3xl gap-3 text-left sm:grid-cols-3">
-        {TIPS.map(([title, text]) => (
-          <li key={title} className="rounded-lg bg-panel p-4">
-            <p className="text-sm font-bold">{t(title)}</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted">{t(text)}</p>
-          </li>
-        ))}
-      </ul>
+          {busy ? (
+            <div className="mt-5">
+              <Progress />
+            </div>
+          ) : (
+            <>
+              <ol className="steps mt-5">
+                <li>
+                  <span className="stn" aria-hidden="true">
+                    1
+                  </span>
+                  <div>
+                    <div className="font-medium text-fg">{t("welcome.step1")}</div>
+                    <div className="cap">{t("welcome.step1Cap")}</div>
+                  </div>
+                </li>
+                <li>
+                  <span className="stn" aria-hidden="true">
+                    2
+                  </span>
+                  <div>
+                    <div className="font-medium text-fg">{t("welcome.step2")}</div>
+                    <div className="cap">{t("welcome.step2Cap")}</div>
+                  </div>
+                </li>
+              </ol>
+              {!supported && (
+                <Note tone="bad" className="mb-4">
+                  {window.isSecureContext ? t("welcome.unsupported") : t("welcome.insecure")}
+                </Note>
+              )}
+              <Button variant="pri" className="lg" onClick={() => void connect()} disabled={!supported}>
+                <Icon name="plug" />
+                {t("action.connectKeyboard")}
+              </Button>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Button onClick={pickBackup}>
+                  <Icon name="upload" size="s" />
+                  {t("action.openBackup")}
+                </Button>
+                <Button onClick={startDemo}>
+                  <Icon name="play" size="s" />
+                  {t("action.demo")}
+                </Button>
+              </div>
+              {supported && <p className="cap mt-4 mb-0 text-center">{t("welcome.autoConnect")}</p>}
+            </>
+          )}
+        </section>
+
+        <details className="disc mt-4 max-w-[520px]">
+          <summary>
+            <Icon name="help" size="s" className="text-accent-light" />
+            {t("welcome.trouble")}
+            <Icon name="chevron" size="s" className="chev" />
+          </summary>
+          <ul>
+            <li>
+              <strong>{t("welcome.trouble1Title")}</strong> {t("welcome.trouble1")}
+            </li>
+            <li>
+              <strong>{t("welcome.trouble2Title")}</strong> {t("welcome.trouble2")}
+            </li>
+            <li>
+              <strong>{t("welcome.trouble3Title")}</strong> {t("welcome.trouble3")}
+              <code className="code">{UDEV_RULE}</code>
+            </li>
+          </ul>
+        </details>
+      </div>
+      <footer className="wfoot">
+        <p className="cap mx-auto my-0 max-w-[70ch]">{t("welcome.disclaimer")}</p>
+      </footer>
     </div>
   );
 }

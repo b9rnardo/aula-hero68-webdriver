@@ -1,140 +1,113 @@
-import { useEffect, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
-import { Page } from "../components/KeyboardStage";
-import { LockIcon } from "../components/icons";
-import { Card, Notice, OptionRow, Row, SettingRow } from "../components/ui";
-import { SavedNote, Toggle } from "../components/WriteControls";
+import { Card, ChangedTag, Check, Dl, InfoTip, Note, PageBody, PageHeader, ReadOnlyPill, Seg } from "../components/ui";
 import { POLLING_HZ, sleepMinutes } from "../data/lighting";
 import { formatFirmware, type KeyboardSnapshot } from "../hid/snapshot";
 import { useI18n, type MessageKey } from "../i18n";
-import { canWrite, useDriver, type ToggleSetting } from "../store/driver";
+import { current } from "../store/draft";
+import type { ToggleSetting } from "../store/driver";
+import { useEditor, useStepLabel } from "./common";
 
 const TOGGLES = [
-  ["winLock", "settings.winLock", "settings.winLockDesc"],
-  ["macMode", "settings.macMode", "settings.macModeDesc"],
-  ["keyCombo", "settings.keyCombo", "settings.keyComboDesc"],
-  ["autoCalibrate", "settings.autoCalibrate", "settings.autoCalibrateDesc"],
+  ["winLock", "set.winLock", "set.winLockInfo"],
+  ["macMode", "set.macMode", "set.macModeInfo"],
+  ["keyCombo", "set.keyCombo", "set.keyComboInfo"],
+  ["autoCalibrate", "set.autoCalibrate", "set.autoCalibrateInfo"],
 ] as const satisfies readonly [ToggleSetting, MessageKey, MessageKey][];
 
 /** Polling levels from fastest to slowest. */
 const POLLING_ORDER = POLLING_HZ.map((hz, level) => ({ hz, level })).sort((a, b) => b.hz - a.hz);
 
 export function SettingsPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
-  const { t, number, date } = useI18n();
+  const { t, number, date, mm } = useI18n();
+  const { draft, edit, writable } = useEditor();
+  const stepLabel = useStepLabel();
   const { settings, device } = snapshot;
+  const polling = current.setting(draft, snapshot, "pollingLevel");
   const sleep = settings.sleepLevel === null ? undefined : sleepMinutes(settings.sleepLevel);
-  const { source, writing, writable, setSetting, setPolling } = useDriver(
-    useShallow((s) => ({ source: s.source, writing: s.writing, writable: canWrite(s), setSetting: s.setSetting, setPolling: s.setPolling })),
-  );
-  const disabled = !writable || writing;
-  // Backups only show the values; while reconnecting the controls stay in place, disabled.
-  const editable = source !== "file";
-
-  /** Which setting was just written, for the confirmation next to it. */
-  const [saved, setSaved] = useState<ToggleSetting | "polling" | null>(null);
-  const [pollingTo, setPollingTo] = useState<number | null>(null);
-  useEffect(() => {
-    if (!saved) return;
-    const timer = setTimeout(() => setSaved(null), 2500);
-    return () => clearTimeout(timer);
-  }, [saved]);
-
-  const choosePolling = async (level: number) => {
-    if (disabled || level === settings.pollingLevel) return;
-    setSaved(null);
-    setPollingTo(level);
-    const ok = await setPolling(level);
-    setPollingTo(null);
-    if (ok) setSaved("polling");
-  };
-  const toggle = async (key: ToggleSetting, on: boolean) => {
-    setSaved(null);
-    if (await setSetting(key, on)) setSaved(key);
-  };
+  const savedHz = settings.pollingLevel === null ? undefined : POLLING_HZ[settings.pollingLevel];
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Page title={t("settings.title")}>
-        <div className="space-y-4">
-          {source === "file" && <Notice icon={<LockIcon size={16} />}>{t("write.connectToWrite")}</Notice>}
+    <PageBody>
+      <PageHeader title={t("nav.settings")} />
+      <div className="grid2">
+        <div className="stack">
+          <Card title={t("set.polling")} info={t("set.pollingInfo")} aside={"pollingLevel" in draft.set && <ChangedTag />}>
+            {polling === null ? (
+              <p className="cap m-0">{t("common.notRead")}</p>
+            ) : (
+              <Seg
+                lg
+                label={t("set.polling")}
+                value={polling}
+                disabled={!writable}
+                className="tabular-nums"
+                options={POLLING_ORDER.map(({ hz, level }) => ({ value: level, label: hz >= 1000 ? `${number(hz / 1000)}k` : String(hz) }))}
+                onChange={(level) =>
+                  edit("set.polling", (d) => {
+                    d.set.pollingLevel = level;
+                  })
+                }
+              />
+            )}
+            <p className="cap mt-2 mb-0">{t("set.pollingUnit")}</p>
+          </Card>
 
-          <Card
-            title={t("settings.polling")}
-            description={t("settings.pollingDesc")}
-            actions={
-              pollingTo !== null ? (
-                <span role="status" className="text-sm font-semibold text-warn">
-                  {t("settings.pollingReconnecting")}
-                </span>
-              ) : (
-                saved === "polling" && <SavedNote demo={source === "demo"} />
-              )
-            }
-          >
-            <ul role="radiogroup" aria-label={t("settings.polling")} className="grid gap-1.5 sm:grid-cols-2">
-              {POLLING_ORDER.map(({ hz, level }) => (
-                <OptionRow
-                  key={level}
-                  selected={(pollingTo ?? settings.pollingLevel) === level}
-                  disabled={disabled}
-                  onSelect={editable ? () => void choosePolling(level) : undefined}
+          <Card title={t("set.behavior")}>
+            {TOGGLES.map(([key, label, info]) => (
+              <div key={key} className="check">
+                <Check
+                  checked={current.setting(draft, snapshot, key)}
+                  disabled={!writable}
+                  onChange={(on) =>
+                    edit(`set.${key}`, (d) => {
+                      d.set[key] = on;
+                    })
+                  }
                 >
-                  {number(hz)} Hz
-                </OptionRow>
-              ))}
-            </ul>
-            {editable && <p className="mt-3 text-xs text-subtle">{t("settings.pollingNote")}</p>}
-          </Card>
-
-          <Card>
-            {TOGGLES.map(([key, title, description]) => (
-              <SettingRow key={key} title={t(title)} description={t(description)}>
-                <span className="flex items-center gap-3 text-sm font-semibold text-muted">
-                  {saved === key ? <SavedNote demo={source === "demo"} /> : settings[key] === null ? t("value.unknown") : settings[key] ? t("value.on") : t("value.off")}
-                  <Toggle on={settings[key]} label={t(title)} disabled={disabled || settings[key] === null} onChange={(on) => void toggle(key, on)} />
-                </span>
-              </SettingRow>
+                  {t(label)}
+                </Check>
+                <InfoTip label={t("info.about", { topic: t(label) })}>{t(info)}</InfoTip>
+                {key in draft.set && <ChangedTag className="ml-auto" />}
+              </div>
             ))}
-            <SettingRow title={t("settings.sleep")} description={t("settings.sleepDesc")}>
-              <span className="text-sm font-bold text-accent">
-                {sleep === undefined ? t("value.unknown") : sleep === null ? t("settings.sleepNever") : t("settings.sleepMinutes", { n: number(sleep) })}
-              </span>
-            </SettingRow>
           </Card>
+        </div>
 
-          <Card title={t("settings.firmwareTitle")}>
-            <dl>
-              <Row label={t("settings.model")}>{device.model ?? t("value.unknown")}</Row>
-              <Row label={t("settings.productName")}>{device.productName}</Row>
-              <Row label={t("settings.uuid")} mono>
-                {device.uuid ?? t("value.unknown")}
-              </Row>
-              <Row label={t("settings.firmware")} mono>
-                {device.firmware === null ? t("value.unknown") : formatFirmware(device.firmware)}
-              </Row>
-              <Row label={t("settings.precision")}>
-                {device.precision ? t("settings.precisionValue", { value: number(device.precision.distance / 1000) }) : t("value.unknown")}
-              </Row>
-              <Row label={t("settings.readAtLabel")}>{date(snapshot.readAt)}</Row>
-            </dl>
-            {snapshot.errors.length > 0 && (
-              <div className="mt-4">
-                <Notice tone="warn">
-                  <p className="font-semibold">{t("settings.errors")}</p>
-                  <p className="mt-1">{t("settings.errorsHint")}</p>
-                  <ul className="mt-2 font-mono text-xs">
-                    {snapshot.errors.map((error) => (
-                      <li key={error.step}>
-                        {error.step}: {error.message}
-                      </li>
-                    ))}
-                  </ul>
-                </Notice>
+        <div className="stack">
+          <Card title={t("set.sleep")} info={t("set.sleepInfo")} aside={<ReadOnlyPill />}>
+            {sleep === undefined ? (
+              <p className="cap m-0">{t("common.notRead")}</p>
+            ) : sleep === null ? (
+              <span className="stat">{t("set.sleepNever")}</span>
+            ) : (
+              <div className="flex items-baseline gap-1.5">
+                <span className="stat tabular-nums">{number(sleep)}</span>
+                <span className="text-muted">min</span>
               </div>
             )}
           </Card>
+
+          <Card title={t("set.device")}>
+            <Dl
+              rows={[
+                [t("set.model"), device.model ?? "—"],
+                [t("set.productName"), device.productName || "—"],
+                [t("set.connection"), "USB · WebHID"],
+                [t("set.uuid"), device.uuid ?? "—", true],
+                [t("set.firmware"), device.firmware === null ? "—" : formatFirmware(device.firmware), true],
+                [t("set.precision"), device.precision ? t("set.precisionValue", { value: mm(device.precision.distance) }) : "—"],
+                [t("set.pollingSaved"), savedHz === undefined ? "—" : `${number(savedHz)} Hz`],
+                [t("set.readAt"), date(snapshot.readAt)],
+              ]}
+            />
+            {snapshot.errors.length > 0 && (
+              <Note tone="warn" className="mt-4">
+                <strong className="font-semibold">{t("set.errors")}</strong>{" "}
+                {snapshot.errors.map((error) => stepLabel(error.step)).join(", ")}
+              </Note>
+            )}
+          </Card>
         </div>
-      </Page>
-    </div>
+      </div>
+    </PageBody>
   );
 }

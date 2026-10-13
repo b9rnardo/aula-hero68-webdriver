@@ -1,334 +1,268 @@
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { KeyboardStage, Page, SelectionActions } from "../components/KeyboardStage";
-import { LockIcon, SearchIcon, WarnIcon } from "../components/icons";
-import { Badge, Button, Card, cx, Empty, Notice, Row } from "../components/ui";
-import { ApplyRow, SavedNote, useSavedFlag } from "../components/WriteControls";
+import { Icon } from "../components/icons";
+import { KeyboardStage } from "../components/KeyboardStage";
+import { Button, Card, Chip, cx, Empty, InfoTip, Note, PageBody, Pill, Seg } from "../components/ui";
 import { describeKey, KEY_FUNCTIONS, keyLegend, type KeyCategory } from "../data/keycodes";
 import { keyByPos, LAYOUT, POSITIONS } from "../data/layout";
+import { LAYER_COUNT } from "../hid/hero68";
 import type { KeyboardSnapshot } from "../hid/snapshot";
 import { useI18n, type MessageKey } from "../i18n";
-import { useKeyText } from "../lib/keys";
-import { groupBy, useTarget } from "../lib/target";
-import { canWrite, useDriver } from "../store/driver";
+import { isLayerKey, useKeyNames, useKeyText } from "../lib/keys";
+import { byOrder } from "../lib/selection";
+import { current } from "../store/draft";
 import { useUi } from "../store/ui";
+import { useEditor } from "./common";
 
 const rawHex = (value: number) => `0x${(value >>> 0).toString(16).padStart(8, "0")}`;
-const keyName = (pos: number) => keyByPos.get(pos)?.label || "Space";
-/** Fn and Fn2: the keys that reach the other layers. */
-const isLayerKey = (value: number | undefined) => value !== undefined && value >>> 24 === 0x0d;
+const LAYERS = Array.from({ length: LAYER_COUNT }, (_, layer) => layer);
+const layerName = (layer: number) => `layers.${layer}` as MessageKey;
+const CATEGORIES = [...new Set(KEY_FUNCTIONS.map((fn) => fn.category))];
+const fold = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+/** Rows shown in the multi-key summary. */
+const LIST_MAX = 12;
 
-function Chip({
-  legend,
-  title,
-  count,
-  picked,
-  assigning,
-  onClick,
-}: {
-  legend: string;
-  title: string;
-  count: number;
-  /** The function chosen for the selected keys. */
-  picked: boolean;
-  /** Clicks choose a function for the selection instead of finding the keys that use it. */
-  assigning: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      disabled={!assigning && count === 0}
-      aria-pressed={assigning ? picked : undefined}
-      className={cx(
-        "flex min-w-10 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold ring-1 transition-colors",
-        picked
-          ? "bg-accent text-accent-ink ring-accent"
-          : count
-            ? "bg-[#3b2c63] text-fg ring-accent/45 hover:ring-accent"
-            : cx("bg-key text-muted ring-key-line", assigning ? "hover:text-fg hover:ring-accent" : "disabled:cursor-default"),
-      )}
-    >
-      {legend}
-      {count > 0 && <span className={cx("text-[11px] font-bold", picked ? "text-accent-ink" : "text-accent")}>{count}</span>}
-    </button>
-  );
-}
+type Category = KeyCategory | "others";
 
 export function RemapPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
-  const { t, l } = useI18n();
+  const { t, l: localize } = useI18n();
   const keyText = useKeyText();
-  const { layer, selected, select } = useUi(useShallow((s) => ({ layer: s.layer, selected: s.selected, select: s.select })));
-  const { source, writing, writable, setKeymap } = useDriver(
-    useShallow((s) => ({ source: s.source, writing: s.writing, writable: canWrite(s), setKeymap: s.setKeymap })),
-  );
-  const target = useTarget();
+  const names = useKeyNames();
+  const { draft, edit, selected, writable } = useEditor();
+  const { layer, setLayer, select } = useUi(useShallow((s) => ({ layer: s.layer, setLayer: s.setLayer, select: s.select })));
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<Category>("letters");
+  const [nudge, setNudge] = useState(false);
 
-  // The function picked in the library, for this layer and selection only.
-  const context = `${layer}:${selected.join()}`;
-  const [draft, setDraft] = useState<{ context: string; value: number } | null>(null);
-  const pending = draft?.context === context ? draft.value : null;
-  const [saved, setSaved] = useSavedFlag();
-  const [savedContext, setSavedContext] = useState("");
+  const read = snapshot.layers[layer] !== undefined;
+  const def = (l: number, pos: number) => keyByPos.get(pos)!.defaults[l];
+  const fnOf = (l: number, pos: number) => current.fn(draft, snapshot, l, pos);
+  const saved = (pos: number) => snapshot.layers[layer]?.[pos];
+  const keys = [...selected].sort(byOrder).filter((pos) => fnOf(layer, pos) !== undefined);
+  const n = keys.length;
+  const first = keys[0];
+  const pending = n === 1 && first in draft.map[layer];
 
-  const map = snapshot.layers[layer];
-  const valueOf = (pos: number) => map?.[pos];
-  const changed = LAYOUT.filter((key) => map?.[key.pos] !== undefined && map[key.pos] !== key.defaults[layer]);
-  const usage = useMemo(() => new Map(groupBy(POSITIONS, (pos) => map?.[pos])), [map]);
-  const focus = selected.length ? selected[selected.length - 1] : null;
-
-  const library = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const matches = KEY_FUNCTIONS.filter(
-      (fn) =>
-        !needle ||
-        fn.label.toLowerCase().includes(needle) ||
-        fn.name?.pt.toLowerCase().includes(needle) ||
-        fn.name?.en.toLowerCase().includes(needle),
-    );
-    const byCategory = new Map<KeyCategory, typeof matches>();
-    for (const fn of matches) byCategory.set(fn.category, [...(byCategory.get(fn.category) ?? []), fn]);
-    // Combos, macros and unknown values used on this layer.
-    const others = [...usage.keys()].filter((value) => describeKey(value).kind !== "known" && (!needle || keyLegend(value).toLowerCase().includes(needle)));
-    return { byCategory: [...byCategory.entries()], others };
-  }, [query, usage]);
-
-  const focusValue = focus === null ? undefined : valueOf(focus);
-  const focusDefault = focus === null ? undefined : keyByPos.get(focus)?.defaults[layer];
-
-  const editable = source !== "file" && map !== undefined;
-  const assigning = editable && selected.length > 0;
-  const disabled = !writable || writing;
-  const notDefault = selected.filter((pos) => {
-    const value = valueOf(pos);
-    return value !== undefined && value !== keyByPos.get(pos)?.defaults[layer];
-  });
-  const unchanged = pending !== null && selected.every((pos) => valueOf(pos) === pending);
-  const losesFn = pending !== null && !isLayerKey(pending) && selected.some((pos) => isLayerKey(valueOf(pos)));
-
-  const write = async (keys: { pos: number; code: number }[]) => {
-    if (disabled || !keys.length) return;
-    const ok = await setKeymap(layer, keys);
-    if (ok) setDraft(null);
-    setSavedContext(context);
-    setSaved(ok);
+  const assign = (value: number) => {
+    if (!n) return setNudge(true);
+    edit("map", (d) => {
+      for (const pos of keys) d.map[layer][pos] = value;
+    });
   };
-  const apply = () => pending !== null && write(selected.map((pos) => ({ pos, code: pending })));
-  const restore = () => write(notDefault.map((pos) => ({ pos, code: keyByPos.get(pos)!.defaults[layer] })));
-  const pick = (value: number) => (assigning ? setDraft({ context, value }) : select(usage.get(value) ?? []));
+  const restore = (l: number, positions: number[]) =>
+    edit("map.restore", (d) => {
+      for (const pos of positions) d.map[l][pos] = def(l, pos);
+    });
+  const revert = (positions: number[]) =>
+    edit("map.revert", (d) => {
+      for (const pos of positions) delete d.map[layer][pos];
+    });
+
+  const changed = LAYERS.flatMap((l) =>
+    LAYOUT.filter((key) => {
+      const value = fnOf(l, key.pos);
+      return value !== undefined && (value !== key.defaults[l] || key.pos in draft.map[l]);
+    }).map((key) => ({ layer: l, pos: key.pos, value: fnOf(l, key.pos)!, pending: key.pos in draft.map[l] })),
+  );
+  const changedHere = changed.filter((row) => row.layer === layer).map((row) => row.pos);
+  const losesFn = keys.some((pos) => isLayerKey(saved(pos)) && !isLayerKey(fnOf(layer, pos)));
+  const isDefault = keys.every((pos) => fnOf(layer, pos) === def(layer, pos));
+  const noDraft = !keys.some((pos) => pos in draft.map[layer]);
+
+  // Combos, macros and unknown values in use on this layer, so they can be put back on other keys.
+  const others = useMemo(
+    () => [...new Set(POSITIONS.map((pos) => current.fn(draft, snapshot, layer, pos)))].filter((value): value is number => value !== undefined && describeKey(value).kind !== "known"),
+    [draft, snapshot, layer],
+  );
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  const matches = (text: string) => words.every((word) => fold(text).includes(word));
+  const items = words.length
+    ? [
+        ...KEY_FUNCTIONS.filter((fn) => matches(`${fn.label} ${fn.name?.pt ?? ""} ${fn.name?.en ?? ""}`)).map((fn) => fn.value),
+        ...others.filter((value) => matches(`${keyLegend(value)} ${keyText.name(value)}`)),
+      ]
+    : category === "others"
+      ? others
+      : KEY_FUNCTIONS.filter((fn) => fn.category === category).map((fn) => fn.value);
+  const currentFns = new Set(keys.map((pos) => fnOf(layer, pos)));
+  const target = names.list(keys, 4);
 
   return (
-    <Page
-      title={t("remap.title")}
-      help={t("remap.help")}
-      actions={<SelectionActions />}
-      stage={
-        <KeyboardStage
-          layers
-          label={t("remap.title")}
-          render={(key) => {
-            const value = valueOf(key.pos);
-            if (value === undefined) return { legend: key.label, tone: "dim" };
-            return { legend: keyLegend(value), tone: value !== key.defaults[layer] ? "marked" : "default" };
-          }}
-        />
-      }
-    >
-      {!map && (
-        <div className="mb-4">
-          <Empty>{t("remap.notRead")}</Empty>
-        </div>
-      )}
-      {/* Selected key and the function picker side by side, so the apply button is next to the list. */}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div className="grid gap-4">
-          <Card title={t("remap.selected")} highlight>
-            {focus === null || focusValue === undefined ? (
-              <Empty>{t("remap.selectHint")}</Empty>
-            ) : (
-              <>
-                <div className="mb-4 flex items-center gap-4">
-                  <span className="grid h-14 min-w-14 place-items-center rounded-md bg-key px-3 text-lg font-bold ring-2 ring-accent">
-                    {keyLegend(focusValue)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-2xl leading-tight font-bold">{keyText.name(focusValue)}</p>
-                    <p className="text-sm text-muted">{keyText.category(focusValue)}</p>
-                  </div>
-                  {focusValue !== focusDefault && (
-                    <span className="ml-auto">
-                      <Badge tone="accent">{t("remap.changed")}</Badge>
-                    </span>
-                  )}
-                </div>
-                <dl>
-                  <Row label={t("remap.default")}>{focusDefault === undefined ? t("value.unknown") : keyText.name(focusDefault)}</Row>
-                  <Row label={t("remap.position")}>
-                    {keyName(focus)} · #{focus}
-                  </Row>
-                  <Row label={t("remap.value")} mono>
-                    {rawHex(focusValue)}
-                  </Row>
-                </dl>
-                {selected.length > 1 && (
-                  <p className="mt-3 text-xs text-subtle">{t("selection.count", { n: selected.length })}</p>
-                )}
-                {source === "file" && (
-                  <div className="mt-4">
-                    <Notice icon={<LockIcon size={16} />}>{t("write.connectToWrite")}</Notice>
-                  </div>
-                )}
-                {assigning && (
-                  <div className="mt-4 border-t border-line pt-4">
-                    {pending === null ? (
-                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                        {saved && savedContext === context ? (
-                          <SavedNote demo={source === "demo"} />
-                        ) : (
-                          <p className="text-sm text-muted">{t("remap.pickHint", { target: target.label })}</p>
-                        )}
-                        {notDefault.length > 0 && (
-                          <Button size="sm" disabled={disabled} onClick={() => void restore()}>
-                            {t("remap.restore")}
-                          </Button>
-                        )}
+    <>
+      <KeyboardStage
+        title={t("nav.remap")}
+        extra={
+          <div className="flex items-center gap-1.5">
+            <Seg label={t("remap.layer")} value={layer} onChange={setLayer} options={LAYERS.map((l) => ({ value: l, label: t(layerName(l)) }))} />
+            <InfoTip label={t("remap.layerInfoLabel")}>{t("remap.layerInfo")}</InfoTip>
+          </div>
+        }
+        sameValue={(pos) => fnOf(layer, pos)}
+        chips={[{ label: t("remap.chipChanged"), positions: changedHere }]}
+        legend={
+          <span className="legend">
+            <span className="font-semibold text-accent-light">Aa</span>
+            {t("remap.legendChanged")}
+          </span>
+        }
+        render={(key) => {
+          const value = fnOf(layer, key.pos);
+          if (value === undefined) return { legend: key.label, dim: true, desc: t("common.notRead") };
+          return {
+            legend: keyLegend(value),
+            alt: value !== key.defaults[layer],
+            dirty: key.pos in draft.map[layer],
+            desc: keyText.name(value),
+          };
+        }}
+      />
+      <PageBody>
+        {!read && (
+          <div className="mb-4">
+            <Empty title={t("common.notReadTitle")}>{t("remap.notRead")}</Empty>
+          </div>
+        )}
+        <div className="grid2">
+          <div className="stack">
+            <Card
+              title={n === 0 ? t("remap.noneTitle") : n === 1 ? t("remap.keyTitle", { name: names.name(first) }) : t("selection.many", { n })}
+              sub={n === 1 ? t("remap.factory", { fn: keyText.name(def(layer, first)) }) : undefined}
+              aside={<Pill>{t("remap.layerPill", { layer: t(layerName(layer)) })}</Pill>}
+            >
+              {n === 0 && <Empty title={t("remap.pickKey")} />}
+              {n === 1 && (
+                <>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="capk" title={keyText.name(saved(first) ?? def(layer, first))}>
+                        {keyLegend(saved(first) ?? def(layer, first))}
                       </div>
-                    ) : (
-                      <form
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void apply();
+                      <span className="cap">{t("remap.onKeyboard")}</span>
+                    </div>
+                    <Icon name="arrow" className="text-muted" />
+                    <div className="flex flex-col items-center gap-2">
+                      <div className={cx("capk", pending ? "new" : "ghost")} title={pending ? keyText.name(fnOf(layer, first)!) : undefined}>
+                        {pending ? keyLegend(fnOf(layer, first)!) : t("remap.choose")}
+                      </div>
+                      <span className="cap">{pending ? t("stage.unsavedLegend") : t("remap.newFunction")}</span>
+                    </div>
+                  </div>
+                  <p className="cap mt-3 mb-0">
+                    {keyText.name(fnOf(layer, first)!)} · {keyText.category(fnOf(layer, first)!)} · <span className="font-mono">{rawHex(fnOf(layer, first)!)}</span>
+                  </p>
+                </>
+              )}
+              {n > 1 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {keys.slice(0, LIST_MAX).map((pos) => (
+                    <Pill key={pos}>
+                      <span className="font-mono">{names.name(pos)}</span>
+                      <span className="text-muted">→</span>
+                      {keyLegend(fnOf(layer, pos)!)}
+                    </Pill>
+                  ))}
+                  {n > LIST_MAX && <span className="cap self-center">{t("remap.more", { n: n - LIST_MAX })}</span>}
+                </div>
+              )}
+              {losesFn && (
+                <Note tone="bad" className="mt-4">
+                  {t("remap.fnWarning")}
+                </Note>
+              )}
+              {n > 0 && (
+                <div className="mt-[18px] flex flex-wrap gap-2">
+                  <Button sm onClick={() => restore(layer, keys)} disabled={!writable || isDefault}>
+                    {t("remap.restore")}
+                  </Button>
+                  <Button variant="gh" sm onClick={() => revert(keys)} disabled={!writable || noDraft}>
+                    {t("remap.revert")}
+                  </Button>
+                </div>
+              )}
+            </Card>
+
+            <Card title={t("remap.changedTitle")} info={t("remap.changedInfo")} aside={<Pill className="tabular-nums">{changed.length}</Pill>}>
+              {changed.length === 0 ? (
+                <p className="cap m-0">{t("remap.noChanged")}</p>
+              ) : (
+                <div className="max-h-[320px] overflow-auto">
+                  {changed.map((row) => (
+                    <div key={`${row.layer}:${row.pos}`} className="crow">
+                      <Pill>{t(layerName(row.layer))}</Pill>
+                      <span className="min-w-0 flex-1">
+                        <span className="font-mono">{names.name(row.pos)}</span> <span className="text-muted">→</span>{" "}
+                        <strong className="font-semibold">{keyText.name(row.value)}</strong>
+                        {row.pending && <span className="chg"> · {t("stage.unsavedLegend").toLowerCase()}</span>}
+                      </span>
+                      <Button
+                        variant="gh"
+                        sm
+                        onClick={() => {
+                          setLayer(row.layer);
+                          select([row.pos]);
                         }}
                       >
-                        <p className="eyebrow mb-2 text-accent">{t("remap.newFunction", { layer: t(`layers.${layer}` as MessageKey) })}</p>
-                        <div className="mb-4 flex items-center gap-3">
-                          <span className="grid h-11 min-w-11 place-items-center rounded-md bg-accent px-3 font-bold text-accent-ink">
-                            {keyLegend(pending)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-lg leading-tight font-bold">{keyText.name(pending)}</p>
-                            <p className="text-sm text-muted">{keyText.category(pending)}</p>
-                          </div>
-                        </div>
-                        {losesFn && (
-                          <div className="mb-4">
-                            <Notice tone="warn" icon={<WarnIcon size={16} />}>
-                              {t("remap.fnWarning")}
-                            </Notice>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <ApplyRow size="md" target={target.label} writing={writing} disabled={disabled || unchanged} saved={false} demo={source === "demo"} />
-                          <Button variant="ghost" disabled={writing} onClick={() => setDraft(null)}>
-                            {t("remap.cancel")}
-                          </Button>
-                        </div>
-                      </form>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-
-          <Card
-            title={t("remap.changedTitle")}
-            actions={
-              changed.length > 0 ? (
-                <Button size="sm" variant="ghost" onClick={() => select(changed.map((key) => key.pos))}>
-                  {t("remap.selectChanged")}
-                </Button>
-              ) : (
-                <Badge>0</Badge>
-              )
-            }
-            description={t("remap.changedCount", { n: changed.length })}
-          >
-            {changed.length > 0 && (
-              <ul className="-mx-3 max-h-64 space-y-0.5 overflow-y-auto">
-                {changed.map((key) => (
-                  <li key={key.pos}>
-                    <button
-                      type="button"
-                      onClick={() => select([key.pos])}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-hover"
-                    >
-                      <span className="w-20 shrink-0 font-bold">{keyName(key.pos)}</span>
-                      <span className="text-subtle">→</span>
-                      <span className="min-w-0 flex-1 truncate font-semibold">{keyText.name(map![key.pos])}</span>
-                      <span className="hidden text-xs text-subtle sm:inline">{keyText.name(key.defaults[layer])}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
-
-        <Card
-          title={t("remap.library")}
-          description={assigning ? t("remap.libraryAssign", { target: target.label }) : t("remap.libraryDesc")}
-          actions={
-            <label className="flex h-9 w-full max-w-64 items-center gap-2 rounded-md bg-field px-3 text-muted ring-1 ring-line focus-within:ring-accent">
-              <SearchIcon size={16} />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("remap.search")}
-                aria-label={t("remap.search")}
-                className="w-full bg-transparent text-sm text-fg outline-none placeholder:text-subtle"
-              />
-            </label>
-          }
-        >
-          {library.byCategory.length === 0 && library.others.length === 0 ? (
-            <Empty>{t("remap.noResults")}</Empty>
-          ) : (
-            <div className="max-h-[440px] space-y-5 overflow-y-auto pr-1">
-              {library.others.length > 0 && (
-                <section>
-                  <p className="eyebrow mb-2 text-subtle">{t("category.combo")} / {t("category.macro")}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {library.others.map((value) => (
-                      <Chip
-                        key={value}
-                        legend={keyLegend(value)}
-                        title={keyText.name(value)}
-                        count={usage.get(value)?.length ?? 0}
-                        picked={pending === value}
-                        assigning={assigning}
-                        onClick={() => pick(value)}
-                      />
-                    ))}
-                  </div>
-                </section>
+                        {t("selection.selectOne")}
+                      </Button>
+                      <Button variant="gh" sm disabled={!writable || row.value === def(row.layer, row.pos)} onClick={() => restore(row.layer, [row.pos])}>
+                        {t("remap.restoreOne")}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
-              {library.byCategory.map(([category, functions]) => (
-                <section key={category}>
-                  <p className="eyebrow mb-2 text-subtle">{t(`category.${category}` as MessageKey)}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {functions.map((fn) => (
-                      <Chip
-                        key={fn.value}
-                        legend={fn.label}
-                        title={fn.name ? l(fn.name) : fn.label}
-                        count={usage.get(fn.value)?.length ?? 0}
-                        picked={pending === fn.value}
-                        assigning={assigning}
-                        onClick={() => pick(fn.value)}
-                      />
-                    ))}
-                  </div>
-                </section>
+            </Card>
+          </div>
+
+          <Card title={t("remap.library")} info={t("remap.libraryInfo")} sub={nudge && !n ? <span className="nudge" role="status">{t("remap.nudge")}</span> : undefined}>
+            <label className="sfield">
+              <Icon name="search" size="s" />
+              <span className="sr-only">{t("remap.searchLabel")}</span>
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("remap.search")} />
+            </label>
+            <div className="cats" role="toolbar" aria-label={t("remap.categories")}>
+              {[...CATEGORIES, ...(others.length ? (["others"] as const) : [])].map((id) => (
+                <Chip
+                  key={id}
+                  on={!words.length && category === id}
+                  onClick={() => {
+                    setCategory(id);
+                    setQuery("");
+                  }}
+                >
+                  {t(`category.${id}` as MessageKey)}
+                </Chip>
               ))}
             </div>
-          )}
-        </Card>
-      </div>
-    </Page>
+            <div className="fgrid">
+              {items.map((value) => {
+                const on = currentFns.size === 1 && currentFns.has(value);
+                const fn = describeKey(value);
+                const name = fn.kind === "known" && fn.fn.name ? localize(fn.fn.name) : keyText.name(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={cx("fn", on && "on")}
+                    aria-pressed={on}
+                    aria-label={name}
+                    title={n ? t("remap.put", { fn: name, keys: target }) : t("remap.nudge")}
+                    disabled={!writable}
+                    onClick={() => assign(value)}
+                  >
+                    {keyLegend(value)}
+                  </button>
+                );
+              })}
+            </div>
+            {!items.length && <p className="cap mt-3.5 mb-0">{t("remap.noResults")}</p>}
+          </Card>
+        </div>
+      </PageBody>
+    </>
   );
 }
