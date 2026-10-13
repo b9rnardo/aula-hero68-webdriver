@@ -19,6 +19,12 @@ export interface KeyCap {
   /** Has an unsaved change. */
   dirty?: boolean;
   dim?: boolean;
+  /** Live travel: how far the key is down, 0–1, drawn as a fill from the top. */
+  fill?: number;
+  /** Live travel: the keyboard counts the key as pressed. */
+  hot?: boolean;
+  /** Marked like a selected key when the stage picks instead of selecting. */
+  on?: boolean;
   /** Spoken value, for the key's accessible name. */
   desc: string;
 }
@@ -48,7 +54,7 @@ export const hexRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i
 /**
  * The sticky keyboard at the top of editing pages: page title, quick selections, the keys and the
  * selection summary. Click selects, drag paints, Shift + click adds a range, double click picks every
- * key with the same value.
+ * key with the same value. With `pick`, a click only picks that key and the selection tools are hidden.
  */
 export function KeyboardStage({
   title,
@@ -58,6 +64,8 @@ export function KeyboardStage({
   chips = [],
   legend,
   values,
+  pick,
+  status,
 }: {
   title: string;
   /** Next to the title: layer or mode switcher. */
@@ -70,6 +78,10 @@ export function KeyboardStage({
   legend?: ReactNode;
   /** Offer the "Values" switch. */
   values?: boolean;
+  /** Clicking a key calls this instead of selecting it (live travel). */
+  pick?: (pos: number) => void;
+  /** Replaces the selection summary while picking. */
+  status?: string;
 }) {
   const { t } = useI18n();
   const names = useKeyNames();
@@ -142,6 +154,7 @@ export function KeyboardStage({
             <h1 className="h1 s">{title}</h1>
             {extra}
           </div>
+          {!pick && (
           <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label={t("selection.quick")}>
             <span className="cap hide-s mr-0.5">{t("selection.select")}</span>
             {quick.map((chip) => (
@@ -161,13 +174,14 @@ export function KeyboardStage({
               {t("selection.clear")} <Kbd>Esc</Kbd>
             </Button>
           </div>
+          )}
         </div>
 
         <div className="plate">
           <div className="kb" role="group" aria-label={t("stage.keys")} style={{ aspectRatio: `${LAYOUT_WIDTH} / ${LAYOUT_HEIGHT}` }}>
             {LAYOUT.map((key) => {
               const cap = render(key);
-              const on = selectedSet.has(key.pos);
+              const on = pick ? !!cap.on : selectedSet.has(key.pos);
               return (
                 <div
                   key={key.pos}
@@ -181,19 +195,20 @@ export function KeyboardStage({
                 >
                   <button
                     type="button"
-                    className={cx("key", on && "sel", cap.alt && "alt", cap.dim && "dim")}
+                    className={cx("key", on && "sel", cap.alt && "alt", cap.dim && "dim", cap.fill !== undefined && "lv", cap.hot && "hot")}
                     style={cap.bg ? { backgroundColor: cap.bg } : undefined}
                     aria-pressed={on}
                     aria-label={`${names.name(key.pos)}, ${cap.desc}${cap.dirty ? `, ${t("stage.unsaved")}` : ""}`}
                     onMouseDown={(event) => {
-                      if (event.button !== 0) return;
+                      if (event.button !== 0 || pick) return;
                       drag.current = { add: !on, start: key.pos };
                       moved.current = false;
                     }}
                     onMouseEnter={() => paint(key.pos)}
-                    onClick={(event) => click(key.pos, event)}
-                    onDoubleClick={() => pickSame(key.pos)}
+                    onClick={(event) => (pick ? pick(key.pos) : click(key.pos, event))}
+                    onDoubleClick={() => !pick && pickSame(key.pos)}
                   >
+                    {!!cap.fill && <span className="kfill" style={{ height: `${Math.min(cap.fill, 1) * 100}%` }} />}
                     <span className="lg">{cap.legend}</span>
                     <span className="vl">{values && !showValues ? "" : cap.value}</span>
                     {cap.dirty && <span className="dot" aria-hidden="true" />}
@@ -206,17 +221,19 @@ export function KeyboardStage({
 
         <div className="mx-auto flex max-w-[740px] flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div className="ttl">
-            <InfoTip label={t("selection.howLabel")}>{t("selection.how")}</InfoTip>
+            {!pick && <InfoTip label={t("selection.howLabel")}>{t("selection.how")}</InfoTip>}
             <p className="selt" role="status" aria-live="polite">
-              {summary}
+              {pick ? status : summary}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             {legend}
-            <span className="legend">
-              <span className="ldot" />
-              {t("stage.unsavedLegend")}
-            </span>
+            {!pick && (
+              <span className="legend">
+                <span className="ldot" />
+                {t("stage.unsavedLegend")}
+              </span>
+            )}
             {values && (
               <span className="legend">
                 {t("stage.values")}

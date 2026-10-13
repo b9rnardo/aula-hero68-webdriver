@@ -22,7 +22,7 @@ const usePending = () => {
 
 /** Unsaved changes per sidebar page. */
 const countFor = (id: PageId, pending: Pending) =>
-  ({ actuation: pending.act, rapidTrigger: pending.rt, deadZone: pending.dz, remap: pending.map, settings: pending.set })[id as string] ?? 0;
+  ({ actuation: pending.act, rapidTrigger: pending.rt, deadZone: pending.dz, switch: pending.sw, remap: pending.map, settings: pending.set })[id as string] ?? 0;
 
 function useStatus(): { text: string; led: string } {
   const { t } = useI18n();
@@ -239,6 +239,7 @@ function PendingBar() {
         pending.act && t("bar.act", { keys: keys(pending.act) }),
         pending.rt && t("bar.rt", { keys: keys(pending.rt) }),
         pending.dz && t("bar.dz", { keys: keys(pending.dz) }),
+        pending.sw && t("bar.sw", { keys: keys(pending.sw) }),
         pending.map && t("bar.map", { keys: keys(pending.map) }),
         pending.set && `${t(pending.set === 1 ? "bar.setOne" : "bar.setMany", { n: pending.set })}${pending.polling ? ` ${t("bar.reconnect")}` : ""}`,
       ]

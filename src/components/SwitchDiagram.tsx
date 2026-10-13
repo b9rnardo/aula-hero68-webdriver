@@ -1,4 +1,5 @@
 import { useI18n } from "../i18n";
+import { cx } from "./ui";
 
 // Side view of a magnetic switch: the stem goes down to the actuation point, where the magnet is close
 // enough to the Hall sensor. 30 px per mm; the slider's bottom rests on y = 104 and the floor is y = 240.
@@ -17,6 +18,8 @@ export function SwitchDiagram({
   maxUm,
   travelUm,
   savedUm,
+  depthUm,
+  hot,
 }: {
   /** Actuation range of the selected keys; null when nothing is selected (switch at rest). */
   minUm: number | null;
@@ -24,6 +27,10 @@ export function SwitchDiagram({
   travelUm: number;
   /** Keyboard value, drawn as a tick when the selection has an unsaved change. */
   savedUm?: number | null;
+  /** Live travel: the stem follows this depth instead of resting on the actuation point. */
+  depthUm?: number | null;
+  /** Live travel: the keyboard counts the key as pressed. */
+  hot?: boolean;
 }) {
   const { t, mm, number } = useI18n();
   const on = minUm !== null && maxUm !== null;
@@ -31,8 +38,9 @@ export function SwitchDiagram({
   const hi = on ? maxUm / 1000 : 0;
   const travel = travelUm / 1000;
   const mixed = on && lo !== hi;
+  const live = depthUm != null;
   const y = (value: number) => TOP + value * PX_PER_MM;
-  const dy = lo * PX_PER_MM;
+  const dy = (live ? Math.min(depthUm, travelUm) / 1000 : lo) * PX_PER_MM;
   const pillY = !on ? -100 : mixed ? (y(lo) + y(hi)) / 2 : y(lo);
   const endY = y(travel);
 
@@ -46,14 +54,16 @@ export function SwitchDiagram({
     return { value, y: ty, major, show: major && Math.abs(ty - pillY) >= 14 && (end || Math.abs(ty - endY) >= 14) };
   });
 
-  const aria = !on
+  const aria = live
+    ? t(hot ? "diagram.liveOn" : "diagram.live", { depth: mm(depthUm), value: on ? mm(minUm) : "–" })
+    : !on
     ? t("diagram.rest")
     : mixed
       ? t("diagram.mixed", { min: mm(minUm), max: mm(maxUm), travel: mm(travelUm) })
       : t("diagram.single", { value: mm(minUm), travel: mm(travelUm) });
 
   return (
-    <svg viewBox="0 0 340 284" role="img" aria-label={aria} className="mx-auto block h-auto w-full max-w-[400px]">
+    <svg viewBox="0 0 340 284" role="img" aria-label={aria} className={cx("mx-auto block h-auto w-full max-w-[400px]", live && "fast")}>
       <rect x="112" y="64" width="152" height="188" rx="6" className="sw-house" />
       <path d={SPRING} className="sw-spring" style={{ transform: `translateY(${TOP + dy}px) scaleY(${((SPAN - dy) / SPAN).toFixed(4)})` }} />
       <g className="sw-move" style={{ transform: `translateY(${dy}px)` }}>
@@ -71,7 +81,7 @@ export function SwitchDiagram({
       <rect x="112" y="240" width="152" height="12" rx="4" className="sw-plate" />
       <rect x="112" y="64" width="152" height="188" rx="6" className="sw-outline" />
       <rect x="92" y="262" width="192" height="10" rx="3" className="sw-pcb" />
-      <rect x="176" y="254" width="24" height="8" rx="2" style={{ fill: on ? "#a48bff" : "#9e96b3" }} />
+      <rect x="176" y="254" width="24" height="8" rx="2" style={{ fill: (live ? hot : on) ? "#a48bff" : "#9e96b3" }} />
       <line x1="44" x2="140" y1="228" y2="228" className="sw-lead" />
       <text x="8" y="232" className="sw-lbl">
         {t("diagram.spring")}

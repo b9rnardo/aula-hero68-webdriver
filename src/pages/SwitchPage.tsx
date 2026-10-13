@@ -2,31 +2,36 @@ import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Icon } from "../components/icons";
 import { hexRgb, KeyboardStage, mixColor } from "../components/KeyboardStage";
-import { Card, ChangedTag, Check, cx, Empty, InfoTip, PageBody, Pill, ReadOnlyPill, Seg, SelectionEmpty, Swatch, Title } from "../components/ui";
+import { Card, ChangedTag, Check, cx, Empty, InfoTip, PageBody, Pill, Seg, SelectionEmpty, Swatch, Title } from "../components/ui";
 import { POSITIONS } from "../data/layout";
 import { switchById, type SwitchInfo } from "../data/switches";
 import type { KeyboardSnapshot } from "../hid/snapshot";
 import { useI18n } from "../i18n";
 import { sameSet } from "../lib/selection";
+import { useKeyNames } from "../lib/keys";
 import { groupBy } from "../lib/target";
 import { navigate } from "../navigation";
 import { current } from "../store/draft";
+import { useLive } from "../store/live";
 import { useUi, type SwitchMode } from "../store/ui";
-import { useCount, useEditor, useLegend } from "./common";
+import { travelOf, useCount, useEditor, useLegend } from "./common";
+import { LiveTravel } from "./LiveTravel";
 
 const tint = (sw: SwitchInfo | undefined) => (sw ? mixColor(hexRgb(sw.color), 0.32) : undefined);
 const fold = (text: string) => text.toLowerCase();
 
-/** Writing the switch type, calibrating and live travel wait for a test on the keyboard; this page only reads. */
+/** Switch type per key goes through the draft; calibration waits for a test on the keyboard; live travel only reads. */
 export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const { t, mm } = useI18n();
   const { draft, edit, selected, writable } = useEditor();
   const legend = useLegend(snapshot);
+  const names = useKeyNames();
   const count = useCount();
   const { mode, setMode, select } = useUi(useShallow((s) => ({ mode: s.switchMode, setMode: s.setSwitchMode, select: s.select })));
   const [query, setQuery] = useState("");
+  const live = useLive(useShallow((s) => ({ keys: s.keys, focus: s.focus, pinned: s.pinned, on: s.status === "on", follow: s.follow })));
 
-  const typeOf = (pos: number) => snapshot.keys[pos]?.switchType;
+  const typeOf = (pos: number) => current.sw(draft, snapshot, pos);
   const swOf = (pos: number) => switchById.get(typeOf(pos) ?? -1);
   const inUse = groupBy(POSITIONS, typeOf).sort((a, b) => b[1].length - a[1].length);
   const read = inUse.length > 0;
@@ -36,6 +41,16 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const compatible = snapshot.features.switchTypes.map((id) => switchById.get(id)).filter((sw): sw is SwitchInfo => !!sw);
   const list = compatible.filter((sw) => fold(sw.name).includes(fold(query.trim())));
   const autoCalibrate = current.setting(draft, snapshot, "autoCalibrate");
+
+  const pick = (sw: SwitchInfo) =>
+    edit(`sw.${sw.id}`, (d, snap) => {
+      for (const pos of keys) {
+        d.sw[pos] = sw.id;
+        // Like the official driver: an actuation deeper than the new switch's travel comes up to its bottom.
+        const act = current.act(d, snap, pos);
+        if (act !== undefined && act > sw.travelUm) d.act[pos] = sw.travelUm;
+      }
+    });
 
   return (
     <>
@@ -53,23 +68,56 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
             ]}
           />
         }
-        values={mode === "type"}
+        values={mode !== "calibration"}
         sameValue={typeOf}
+        pick={mode === "live" ? live.follow : undefined}
+        status={
+          !live.on
+            ? t("live.off")
+            : live.focus === null
+              ? t("live.waiting")
+              : t(live.pinned ? "live.pinned" : "live.following", { name: names.name(live.focus) })
+        }
         legend={
-          mode === "type" &&
-          inUse.map(([id]) => (
-            <span key={id} className="legend">
-              <Swatch color={tint(switchById.get(id)) ?? "var(--color-key)"} />
-              {switchById.get(id)?.name ?? t("sw.unknown", { id })}
-            </span>
-          ))
+          mode === "type"
+            ? inUse.map(([id]) => (
+                <span key={id} className="legend">
+                  <Swatch color={tint(switchById.get(id)) ?? "var(--color-key)"} />
+                  {switchById.get(id)?.name ?? t("sw.unknown", { id })}
+                </span>
+              ))
+            : mode === "live" && (
+                <>
+                  <span className="legend">
+                    <Swatch color="rgb(164 139 255 / 0.36)" />
+                    {t("live.travel")}
+                  </span>
+                  <span className="legend">
+                    <Swatch color="rgb(164 139 255 / 0.66)" className="border-accent-light" />
+                    {t("live.pressed")}
+                  </span>
+                </>
+              )
         }
         render={(key) => {
           const sw = swOf(key.pos);
+          if (mode === "live") {
+            const now = live.keys[key.pos];
+            const down = now && now.depthUm >= 50 ? now : undefined;
+            return {
+              legend: legend(key),
+              value: down ? mm(down.depthUm) : "",
+              fill: down ? down.depthUm / travelOf(snapshot, key.pos) : 0,
+              hot: !!now?.pressed,
+              on: key.pos === live.focus,
+              desc: down ? t(down.pressed ? "live.keyDownOn" : "live.keyDown", { depth: mm(down.depthUm) }) : t("live.keyRest"),
+            };
+          }
           return {
             legend: legend(key),
             value: mode === "type" && sw ? mm(sw.travelUm) : "",
             bg: mode === "type" ? tint(sw) : undefined,
+            dirty: mode === "type" && key.pos in draft.sw,
             desc: sw ? t("sw.keyDesc", { name: sw.name, travel: mm(sw.travelUm) }) : t("common.notRead"),
           };
         }}
@@ -77,7 +125,7 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
       <PageBody>
         {mode === "type" && (
           <div className="grid2">
-            <Card title={t("sw.type")} info={t("sw.typeInfo")} aside={<ReadOnlyPill />}>
+            <Card title={t("sw.type")} info={t("sw.typeInfo")} aside={keys.some((pos) => pos in draft.sw) && <ChangedTag />}>
               {!read ? (
                 <Empty icon="switch" title={t("common.notReadTitle")}>
                   {t("sw.notRead")}
@@ -112,11 +160,19 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
                       </label>
                       <ul className="swlist m-0 list-none p-0" aria-label={t("sw.compatible")}>
                         {list.map((sw) => (
-                          <li key={sw.id} className={cx("row", types.has(sw.id) && "on")}>
-                            <Swatch color={sw.color} />
-                            <span className="min-w-0 flex-1 truncate">{sw.name}</span>
-                            {types.has(sw.id) && <span className="cap">{t("sw.onKeyboard")}</span>}
-                            <span className="cap min-w-[58px] text-right font-mono tabular-nums">{mm(sw.travelUm)} mm</span>
+                          <li key={sw.id}>
+                            <button
+                              type="button"
+                              className={cx("row", types.has(sw.id) && "on")}
+                              aria-pressed={single?.id === sw.id}
+                              disabled={!writable}
+                              onClick={() => pick(sw)}
+                            >
+                              <Swatch color={sw.color} />
+                              <span className="min-w-0 flex-1 truncate">{sw.name}</span>
+                              {types.has(sw.id) && <span className="cap">{t("sw.onKeyboard")}</span>}
+                              <span className="cap min-w-[58px] text-right font-mono tabular-nums">{mm(sw.travelUm)} mm</span>
+                            </button>
                           </li>
                         ))}
                         {!list.length && <li className="cap mx-2.5 my-2">{t("sw.noResults")}</li>}
@@ -198,13 +254,7 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
           </div>
         )}
 
-        {mode === "live" && (
-          <Card title={t("sw.live")} info={t("sw.liveInfo")} aside={<Pill>{t("common.soon")}</Pill>} className="narrow">
-            <Empty icon="actuation" title={t("sw.live.soonTitle")}>
-              <span>{t("sw.cal.notYet")}</span>
-            </Empty>
-          </Card>
-        )}
+        {mode === "live" && <LiveTravel snapshot={snapshot} />}
       </PageBody>
     </>
   );

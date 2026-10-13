@@ -46,6 +46,14 @@ export const Info = {
   RHYTHM: 0x09,
 } as const;
 
+/** Sub-commands of Cmd.TRAVEL_STREAM. */
+export const Travel = {
+  START: 0x00,
+  /** Asks for some keys; also the sub of every travel frame the keyboard sends. */
+  KEYS: 0x01,
+  EXIT: 0x02,
+} as const;
+
 /** Setting ids shared by Cmd.SET_CONFIG (write) and Cmd.GET_CONFIG (read). */
 export const Config = {
   LIGHT: 0x01,

@@ -366,7 +366,34 @@ Leitura completa feita com o código do app (`readSnapshot`) por node-hid. O tec
   - voltou para V (`… 00 3b 00 00 00 19`), e as 3 camadas ficaram iguais às de antes do teste.
 - No app, o mapeamento grava na camada aberta e relê as teclas gravadas para confirmar. Ao trocar uma tecla Fn, o app avisa que as camadas Fn deixam de ser acessíveis pelo teclado.
 
+**Curso ao vivo (`0x98`), validado**
+- Três frames, todos com total 1 e índice 0:
+  - `98 00` liga o modo de medição, e o teclado ecoa;
+  - `98 01` pede teclas: o byte 5 é 2 × n, e os dados são as posições (`pos u16`);
+  - `98 02` sai do modo, e o teclado ecoa. Depois disso não chega mais nenhuma leitura.
+- Cada pedido recebe um frame `98 01` com até 9 teclas, 6 bytes cada: `[pos u16, distância u16, leitura u16]`. O bit 15 da leitura indica tecla acionada, e os outros 15 são o valor do sensor.
+- A distância vem em passos da precisão `rt` (10 µm), como o driver oficial calcula. Em repouso ela fica em 0 ou 1 passo, e o sensor marca entre 9100 e 10270.
+- Mesmo sem pedido, o teclado manda sozinho um frame com uma tecla a cada 50 ms, mais ou menos. No primeiro teste foi C, a última tecla apertada antes de ligar o modo.
+- **Limite:** pedir 9 teclas funciona, e pedir 10 devolve só 9. Um pedido com 28 teclas fez o teclado reiniciar: ele se desconectou e voltou sozinho. A releitura completa mostrou a atuação e o Rapid Trigger das 68 teclas iguais aos de antes. O app nunca pede mais de 9.
+- O modo de medição não muda nenhum ajuste: a atuação e o Rapid Trigger das 68 teclas ficaram iguais antes e depois de cada teste.
+- O driver oficial pede `[tecla atual]` a cada 100 ms. Ele começa pela primeira tecla que chega e troca para outra quando ela aparece acionada enquanto a atual está solta.
+- No app:
+  - pede a cada 100 ms a tecla acompanhada e as que ainda estão descendo, até 9;
+  - clicar numa tecla da tela fixa o acompanhamento nela;
+  - sai do modo ao fechar a aba, esconder a página, desconectar, reler ou antes de qualquer gravação;
+  - as leituras ficam fora do registro de pacotes, que senão se encheria em segundos.
+- Testado pelo dono no teclado real, pelo app.
+
+**Tipo de switch (`0x15`), validado**
+- Frame do driver oficial (`sync_key_type`): `15 00 00 01 00 len`, com `[pos u16, tipo u8]` por tecla, até 18 teclas por frame. O teclado ecoa o frame inteiro, e o driver oficial manda até 3 vezes, esperando 1 s pelo eco.
+- A leitura é a `0x95`, com o mesmo registro de 3 bytes.
+- O teclado de teste informa 11 modelos compatíveis, todos com 3,4 mm de curso: Jade Pro, Uranus Gaming, Wing Chun, Magneto King, Black King, Meteor, Jade King, Dragon King, Jade, Pink King e Jade Emperor. As 68 teclas vêm de fábrica com Jade King (`14`).
+- Teste de ida e volta na tecla V (`59`): Jade King → Jade Pro (`1`) → Jade King. Só o tipo da V mudou, e voltou. A atuação, o Rapid Trigger e as zonas mortas das 68 teclas ficaram iguais, e a leitura em repouso da V (0 a 10 µm, sensor perto de 10020) não mudou com o tipo.
+- Ao escolher um switch, a tela do driver oficial traz a atuação para dentro do curso do novo modelo (`distance > sw.distance ? sw.distance : distance`) e grava o tipo antes da atuação. O app faz o mesmo no rascunho e grava o tipo primeiro. Com os modelos deste teclado, todos de 3,4 mm, isso nunca acontece.
+- O app só oferece os modelos que o próprio teclado informa.
+
 **Ainda não confirmado**
 1. Se a atuação, o Rapid Trigger, as zonas mortas e o mapeamento gravados continuam depois de desconectar o cabo. O driver oficial não manda comando de salvar, então devem continuar. O polling já continua depois da reconexão.
 2. O significado dos 4 bytes de ação do DKS e as teclas avançadas nas camadas 1 e 2. Nenhuma estava configurada, e isso ficou para quando a gravação for implementada.
 3. O que o valor 0 de suspensão significa na prática.
+4. Se o tipo de switch muda a conversão da leitura do sensor em distância. Entre Jade King e Jade Pro, de mesmo curso, a leitura em repouso não mudou; falta comparar modelos de curso diferente, que este teclado não aceita.

@@ -9,6 +9,7 @@ import {
   Info,
   readU16,
   readU32,
+  Travel,
   u16,
   u32,
 } from "./protocol";
@@ -46,6 +47,8 @@ export const ACTUATION_MAX_UM = 4000;
 export const RAPID_TRIGGER_MAX_UM = 4000;
 /** Top and bottom dead zones go from 0 to 0.5 mm, like the official driver. */
 export const DEAD_ZONE_MAX_UM = 500;
+/** Keys per live travel request. 9 work; a request with 28 made the keyboard reset. */
+export const TRAVEL_MAX_KEYS = 9;
 
 export interface Rgb {
   r: number;
@@ -92,6 +95,17 @@ export interface KeyDeadZone {
   globalFlag: number;
 }
 
+/** One key in a live travel frame. */
+export interface TravelSample {
+  pos: number;
+  /** How far the key is pressed down. */
+  depthUm: number;
+  /** Raw Hall sensor reading. */
+  ad: number;
+  /** The keyboard counts the key as pressed (bit 15 of the reading). */
+  pressed: boolean;
+}
+
 export type AdvancedKey =
   | { type: "TGL"; pos: number; key: number; delayMs: number }
   | { type: "MT"; pos: number; hold: number; tap: number; delayMs: number }
@@ -112,6 +126,21 @@ function records(data: Uint8Array, size: number, count: number): Uint8Array[] {
   for (let at = 0; at + size <= data.length && out.length < count; at += size) out.push(data.subarray(at, at + size));
   return out;
 }
+
+/**
+ * Keys in a live travel frame (`98 01`): 6 bytes each, `pos, distance, reading (bit 15 = pressed)`.
+ * `step` is µm per distance unit; the official driver uses the Rapid Trigger precision here.
+ * Returns null for any other frame.
+ */
+export function parseTravel(frame: Uint8Array, step: number): TravelSample[] | null {
+  if (frame[0] !== Cmd.TRAVEL_STREAM || frame[1] !== Travel.KEYS) return null;
+  return records(frameData(frame), 6, TRAVEL_MAX_KEYS).map((record) => {
+    const reading = readU16(record, 4);
+    return { pos: readU16(record, 0), depthUm: readU16(record, 2) * step, ad: reading & 0x7fff, pressed: (reading & 0x8000) !== 0 };
+  });
+}
+
+const travelReply = (sub: number) => (frame: Uint8Array) => frame[0] === Cmd.TRAVEL_STREAM && frame[1] === sub;
 
 /** High-level API for the HERO 68 HE ("kb_by_v3_wired" protocol). Reads everything; writes are added one setting at a time. */
 export class Hero68 {
@@ -400,6 +429,18 @@ export class Hero68 {
     return result;
   }
 
+  /**
+   * Tells the keyboard which switch is in each key (official `sync_key_type`): position and type id,
+   * 18 keys per frame. The keyboard echoes each frame; the official driver sends it up to 3 times.
+   */
+  async setSwitchTypes(keys: { pos: number; type: number }[]): Promise<void> {
+    for (const { type } of keys) if (!(Number.isInteger(type) && type >= 0 && type <= 0xff)) throw new RangeError(`switch type out of range: ${type}`);
+    for (const group of chunk(keys, 18)) {
+      const data = group.flatMap(({ pos, type }) => [...u16(pos), type]);
+      await this.request(Cmd.SET_SWITCH_TYPE, { data }, { timeoutMs: 1000, retries: 2 });
+    }
+  }
+
   async getKeyColors(positions: number[]): Promise<Map<number, Rgb>> {
     const result = new Map<number, Rgb>();
     for (const group of chunk(positions, 11)) {
@@ -408,6 +449,32 @@ export class Hero68 {
         result.set(readU16(record, 0), { r: record[2], g: record[3], b: record[4] });
     }
     return result;
+  }
+
+  // ── Live travel ───────────────────────────────────────────────────────
+  // Measure mode only reports; it changes no setting. Tested on the keyboard: start and exit are echoed,
+  // each request gets one frame back, and the keyboard also reports a key by itself about every 50 ms.
+
+  async startTravel(): Promise<void> {
+    await this.request(Cmd.TRAVEL_STREAM, { sub: Travel.START }, { match: travelReply(Travel.START), timeoutMs: 500, retries: 2 });
+  }
+
+  /** Asks for the travel of up to 9 keys. The answer goes to onTravel listeners. */
+  async requestTravel(positions: number[]): Promise<void> {
+    if (positions.length > TRAVEL_MAX_KEYS) throw new RangeError(`too many keys for one travel request: ${positions.length}`);
+    await this.transport.send(buildFrame(Cmd.TRAVEL_STREAM, { sub: Travel.KEYS, data: posBytes(positions) }));
+  }
+
+  async stopTravel(): Promise<void> {
+    await this.request(Cmd.TRAVEL_STREAM, { sub: Travel.EXIT }, { match: travelReply(Travel.EXIT), timeoutMs: 500, retries: 2 });
+  }
+
+  /** Travel frames, requested or not. Returns an unsubscribe function. */
+  onTravel(listener: (samples: TravelSample[]) => void): () => void {
+    return this.transport.subscribe((frame) => {
+      const samples = parseTravel(frame, this.precision.rt || 10);
+      if (samples) listener(samples);
+    });
   }
 
   // ── Advanced keys ─────────────────────────────────────────────────────

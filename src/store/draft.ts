@@ -15,6 +15,8 @@ export interface Draft {
   act: Record<number, number>;
   rt: Record<number, RapidTrigger>;
   dz: Record<number, DeadZone>;
+  /** Switch type id per key. */
+  sw: Record<number, number>;
   /** Key function per layer. */
   map: Record<number, number>[];
   set: DraftSettings;
@@ -39,7 +41,7 @@ const HISTORY_MAX = 60;
 /** Repeated edits of the same kind within this window share one undo step (dragging a slider, typing). */
 const MERGE_MS = 800;
 
-const emptyDraft = (): Draft => ({ act: {}, rt: {}, dz: {}, map: Array.from({ length: LAYER_COUNT }, () => ({})), set: {} });
+const emptyDraft = (): Draft => ({ act: {}, rt: {}, dz: {}, sw: {}, map: Array.from({ length: LAYER_COUNT }, () => ({})), set: {} });
 const clone = (draft: Draft): Draft => JSON.parse(JSON.stringify(draft)) as Draft;
 const sameRecord = <T extends object>(a: T | undefined, b: T | undefined) =>
   !!a && !!b && (Object.keys(a) as (keyof T)[]).every((key) => a[key] === b[key]);
@@ -50,6 +52,7 @@ function normalize(draft: Draft, snapshot: KeyboardSnapshot): Draft {
   for (const pos of Object.keys(next.act).map(Number)) if (next.act[pos] === snapshot.keys[pos]?.actuationUm) delete next.act[pos];
   for (const pos of Object.keys(next.rt).map(Number)) if (sameRecord(next.rt[pos], snapshot.keys[pos]?.rapidTrigger)) delete next.rt[pos];
   for (const pos of Object.keys(next.dz).map(Number)) if (sameRecord(next.dz[pos], snapshot.keys[pos]?.deadZone)) delete next.dz[pos];
+  for (const pos of Object.keys(next.sw).map(Number)) if (next.sw[pos] === snapshot.keys[pos]?.switchType) delete next.sw[pos];
   next.map.forEach((layer, index) => {
     for (const pos of Object.keys(layer).map(Number)) if (layer[pos] === snapshot.layers[index]?.[pos]) delete layer[pos];
   });
@@ -61,6 +64,7 @@ export interface Pending {
   act: number;
   rt: number;
   dz: number;
+  sw: number;
   map: number;
   set: number;
   /** Distinct keys with any change. */
@@ -73,18 +77,20 @@ export function pendingOf(draft: Draft): Pending {
   const act = Object.keys(draft.act);
   const rt = Object.keys(draft.rt);
   const dz = Object.keys(draft.dz);
+  const sw = Object.keys(draft.sw);
   const map = draft.map.map((layer) => Object.keys(layer));
   const set = Object.keys(draft.set).length;
   const mapCount = map.reduce((sum, layer) => sum + layer.length, 0);
-  const keys = new Set([...act, ...rt, ...dz, ...map.flat()]).size;
+  const keys = new Set([...act, ...rt, ...dz, ...sw, ...map.flat()]).size;
   return {
     act: act.length,
     rt: rt.length,
     dz: dz.length,
+    sw: sw.length,
     map: mapCount,
     set,
     keys,
-    total: act.length + rt.length + dz.length + mapCount + set,
+    total: act.length + rt.length + dz.length + sw.length + mapCount + set,
     polling: "pollingLevel" in draft.set,
   };
 }
@@ -94,6 +100,7 @@ export const current = {
   act: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.act[pos] ?? snapshot.keys[pos]?.actuationUm,
   rt: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.rt[pos] ?? snapshot.keys[pos]?.rapidTrigger,
   dz: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.dz[pos] ?? snapshot.keys[pos]?.deadZone,
+  sw: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.sw[pos] ?? snapshot.keys[pos]?.switchType,
   fn: (draft: Draft, snapshot: KeyboardSnapshot, layer: number, pos: number) => draft.map[layer]?.[pos] ?? snapshot.layers[layer]?.[pos],
   setting: <K extends keyof DraftSettings>(draft: Draft, snapshot: KeyboardSnapshot, key: K) =>
     (key in draft.set ? draft.set[key] : snapshot.settings[key]) as KeyboardSnapshot["settings"][K],
@@ -182,6 +189,9 @@ export const useDraft = create<DraftState>()((set, get) => ({
       return true;
     };
 
+    // First: a shorter switch can bring the actuation down with it, written next.
+    if (pending.sw)
+      steps.push({ label: "save.step.switchType", run: () => every(groups(draft.sw), (g) => useDriver.getState().setSwitchType(g.positions, g.value)) });
     if (pending.act)
       steps.push({ label: "save.step.actuation", run: () => every(groups(draft.act), (g) => useDriver.getState().setActuation(g.positions, g.value)) });
     if (pending.rt)

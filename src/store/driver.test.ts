@@ -237,3 +237,52 @@ describe("driver store: actuation write", () => {
     expect(useDriver.getState().snapshot?.keys[60].actuationUm).toBe(1500);
   });
 });
+
+/** Keyboard that keeps one switch type per key. */
+function switchKeyboard(stored: Map<number, number>, { ignoreWrites = false } = {}) {
+  const fake = fakeDevice((req) => {
+    const length = req[5];
+    if (req[0] === Cmd.GET_SWITCH_TYPE) {
+      const data: number[] = [];
+      for (let i = 0; i < length; i += 2) {
+        const pos = readU16(req, 6 + i);
+        data.push(...u16(pos), stored.get(pos) ?? 0);
+      }
+      return [...header(req, data.length), ...data];
+    }
+    if (req[0] === Cmd.SET_SWITCH_TYPE) {
+      for (let i = 0; i < length && !ignoreWrites; i += 3) stored.set(readU16(req, 6 + i), req[8 + i]);
+      return [...header(req, length), ...req.subarray(6, 6 + length)];
+    }
+    return null;
+  });
+  useDriver.setState({ keyboard: new Hero68(new HidTransport(fake.device)), source: "device", status: "ready", snapshot: demoSnapshot() });
+  return fake.sent;
+}
+
+describe("driver store: switch type write", () => {
+  beforeEach(() => useDriver.setState({ keyboard: null, source: null, snapshot: null, error: null, writing: false }));
+
+  it("writes the type, reads it back and stores it", async () => {
+    const stored = new Map([[59, 0], [60, 0]]);
+    const sent = switchKeyboard(stored);
+    expect(await useDriver.getState().setSwitchType([59, 60], 25)).toBe(true);
+    expect([stored.get(59), stored.get(60)]).toEqual([25, 25]);
+    expect(sent.map((frame) => frame[0])).toEqual([Cmd.SET_SWITCH_TYPE, Cmd.GET_SWITCH_TYPE]);
+    expect(useDriver.getState().snapshot?.keys[60].switchType).toBe(25);
+    expect(useDriver.getState().error).toBeNull();
+  });
+
+  it("reports a type the keyboard didn't keep", async () => {
+    switchKeyboard(new Map([[59, 0]]), { ignoreWrites: true });
+    expect(await useDriver.getState().setSwitchType([59], 25)).toBe(false);
+    expect(useDriver.getState().snapshot?.keys[59].switchType).toBe(0);
+    expect(useDriver.getState().error).not.toBeNull();
+  });
+
+  it("only changes the local copy in the demo", async () => {
+    useDriver.getState().startDemo();
+    expect(await useDriver.getState().setSwitchType([59], 25)).toBe(true);
+    expect(useDriver.getState().snapshot?.keys[59].switchType).toBe(25);
+  });
+});

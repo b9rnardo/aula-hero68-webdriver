@@ -31,6 +31,7 @@ export const ICONS = {
   search: "M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Z M20 20l-4.8-4.8",
   plug: "M9 7V3 M15 7V3 M7 7h10v4a5 5 0 0 1-10 0V7Z M12 16v5",
   play: "M8 5.5v13l10-6.5-10-6.5Z",
+  stop: "M7 7h10v10H7Z",
   chevron: "M6 9l6 6 6-6",
   minus: "M6 12h12",
   plus: "M12 6v12 M6 12h12",

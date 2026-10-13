@@ -153,6 +153,7 @@ Cada página é registrada em `src/navigation.ts` (`page(id, icon, needsData, st
 - Card da esquerda (`grid2` é 1,3 : 1): o editor da seleção. Card da direita: diagrama ou gráfico e "Valores em uso".
 - Os três estados do card de edição, sempre nesta ordem: **não lido** (`Empty`) → **nada selecionado** (`SelectionEmpty`) → **editor**.
 - Seletor de camada ou modo vai em `extra` do `KeyboardStage`, como `Seg`.
+- **Teclado que só aponta uma tecla** (curso ao vivo): passe `pick={(pos) => …}` e `status`. O clique escolhe a tecla em vez de selecionar, e somem os atalhos de seleção e a legenda "Não gravada". A tecla escolhida vem com `on: true` no `render`; `fill` (0–1) e `hot` desenham quanto a tecla desceu e se está acionada.
 
 ### Página sem teclado (ajustes gerais)
 
@@ -213,7 +214,9 @@ Traço 24×24 em `icons.tsx`, `stroke-width` 1,75, pontas arredondadas. Tamanhos
 3. Adicione o tipo no `Draft`, em `normalize`, em `pendingOf` e um passo em `save()` com rótulo `save.step.<tipo>`.
 4. Até lá, a página fica `readOnly` com `ReadOnlyPill`.
 
-Continuam **desligados** até haver validação no hardware: troca de tipo de switch (0x15), calibração (0x94) e curso ao vivo (0x98). Iluminação, perfis, teclas avançadas e macros seguem só leitura.
+Continua **desligada** até haver validação no hardware: a calibração (0x94). Iluminação, perfis, teclas avançadas e macros seguem só leitura.
+
+O curso ao vivo (0x98) está liberado: ele só lê e não muda ajuste nenhum. Regras dele (`src/store/live.ts`): no máximo 9 teclas por pedido (28 fizeram o teclado reiniciar); o modo de medição começa por um botão e termina sozinho ao sair da aba, esconder a página, desconectar, reler ou gravar, sempre mandando a saída antes de qualquer gravação.
 
 ## 9. Textos (i18n)
 

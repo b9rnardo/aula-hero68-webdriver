@@ -3,6 +3,9 @@ import { formatUuid, SNAPSHOT_APP, SNAPSHOT_FORMAT, type KeyboardSnapshot, type 
 import { LAYOUT } from "./layout";
 
 const HID_HOME = 0x4a;
+/** What a HERO 68 HE reports: Jade King on every key, and the models its firmware accepts. */
+const JADE_KING = 14;
+const SWITCH_TYPES = [1, 3, 4, 5, 8, 13, 14, 15, 16, 22, 24];
 const posOf = (label: string) => LAYOUT.find((key) => key.label === label)?.pos ?? -1;
 
 /**
@@ -22,6 +25,7 @@ export function demoSnapshot(): KeyboardSnapshot {
       actuationUm: gaming ? 400 : key.label === "Esc" ? 1500 : 1000,
       rapidTrigger: { enabled: gaming, pressUm: gaming ? 150 : 100, releaseUm: gaming ? 200 : 100 },
       deadZone: { enabled: false, topUm: 100, bottomUm: 100 },
+      switchType: JADE_KING,
       color: { r: Math.round(110 + 120 * t), g: Math.round(60 - 20 * t), b: Math.round(240 - 60 * t) },
     };
   }
@@ -42,7 +46,7 @@ export function demoSnapshot(): KeyboardSnapshot {
       firmware: null,
       precision: { rt: 10, distance: 10 },
     },
-    features: { switchTypes: [], advancedKeys: ["TGL", "MT", "DKS", "SOCD", "MPT", "END"] },
+    features: { switchTypes: SWITCH_TYPES, advancedKeys: ["TGL", "MT", "DKS", "SOCD", "MPT", "END"] },
     profile: { active: 0, names: [null, null, null] },
     settings: { pollingLevel: 4, winLock: false, macMode: false, keyCombo: false, autoCalibrate: true, sleepLevel: 10 },
     lighting: {

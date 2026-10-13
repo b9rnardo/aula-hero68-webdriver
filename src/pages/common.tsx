@@ -9,7 +9,7 @@ import type { KeyboardSnapshot } from "../hid/snapshot";
 import { useI18n, type MessageKey } from "../i18n";
 import { sameSet } from "../lib/selection";
 import { groupBy } from "../lib/target";
-import { current, useDraft } from "../store/draft";
+import { current, useDraft, type Draft } from "../store/draft";
 import { canWrite, useDriver } from "../store/driver";
 import { useUi } from "../store/ui";
 
@@ -18,12 +18,16 @@ import { useUi } from "../store/ui";
 /** Fallback when the switch type was not read: the longest travel in the catalog. */
 export const DEFAULT_TRAVEL_UM = 4000;
 
-export const travelOf = (snapshot: KeyboardSnapshot, pos: number) =>
-  switchById.get(snapshot.keys[pos]?.switchType ?? -1)?.travelUm ?? DEFAULT_TRAVEL_UM;
+/** Switch of a key; with a draft, also one picked but not written yet. */
+const typeOf = (snapshot: KeyboardSnapshot, pos: number, draft?: Draft) =>
+  draft ? current.sw(draft, snapshot, pos) : snapshot.keys[pos]?.switchType;
+
+export const travelOf = (snapshot: KeyboardSnapshot, pos: number, draft?: Draft) =>
+  switchById.get(typeOf(snapshot, pos, draft) ?? -1)?.travelUm ?? DEFAULT_TRAVEL_UM;
 
 /** Total travel of the most common switch among the keys, or an estimate. */
-export function switchTravel(snapshot: KeyboardSnapshot, positions: number[]) {
-  const groups = groupBy(positions, (pos) => snapshot.keys[pos]?.switchType).sort((a, b) => b[1].length - a[1].length);
+export function switchTravel(snapshot: KeyboardSnapshot, positions: number[], draft?: Draft) {
+  const groups = groupBy(positions, (pos) => typeOf(snapshot, pos, draft)).sort((a, b) => b[1].length - a[1].length);
   const sw = groups.length ? switchById.get(groups[0][0]) : undefined;
   return sw ? { travelUm: sw.travelUm, name: sw.name, estimated: false } : { travelUm: DEFAULT_TRAVEL_UM, name: null, estimated: true };
 }

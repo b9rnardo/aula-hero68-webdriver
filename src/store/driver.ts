@@ -12,6 +12,7 @@ import {
 } from "../hid/devices";
 import type { Hero68 } from "../hid/hero68";
 import { HERO68_HE_UUID } from "../hid/hero68";
+import { Cmd, Travel } from "../hid/protocol";
 import {
   formatUuid,
   readSnapshot,
@@ -87,6 +88,8 @@ interface DriverState {
   setRapidTrigger(positions: number[], change: Partial<RapidTrigger>): Promise<boolean>;
   /** Changes dead zone fields of the given keys; fields left out keep each key's current value. */
   setDeadZones(positions: number[], change: Partial<DeadZone>): Promise<boolean>;
+  /** Tells the keyboard which switch the given keys have and reads it back. */
+  setSwitchType(positions: number[], type: number): Promise<boolean>;
   /** Sets the function of keys on one layer (0 base, 1 Fn, 2 Fn2) and reads them back. */
   setKeymap(layer: number, keys: { pos: number; code: number }[]): Promise<boolean>;
   setSetting(key: ToggleSetting, on: boolean): Promise<boolean>;
@@ -188,11 +191,13 @@ export const useDriver = create<DriverState>()((set, get, store) => {
       const keyboard = await openKeyboard(device);
       detach.forEach((off) => off());
       detach = [
-        keyboard.transport.onPacket((direction, bytes) =>
+        keyboard.transport.onPacket((direction, bytes) => {
+          // Live travel sends 20+ frames a second; they would push everything else out of the log.
+          if (bytes[0] === Cmd.TRAVEL_STREAM && bytes[1] === Travel.KEYS) return;
           set((state) => ({
             packets: [...state.packets.slice(-(MAX_PACKETS - 1)), { id: ++packetId, at: Date.now(), direction, bytes }],
-          })),
-        ),
+          }));
+        }),
         onDisconnect(device, () => {
           keyboard.transport.dispose();
           detach.forEach((off) => off());
@@ -318,6 +323,19 @@ export const useDriver = create<DriverState>()((set, get, store) => {
               );
             })
           );
+        },
+      );
+    },
+
+    async setSwitchType(positions, type) {
+      if (!positions.length) return false;
+      return write(
+        () => patchKeys(positions.map((pos) => [pos, { switchType: type }])),
+        async (keyboard) => {
+          await keyboard.setSwitchTypes(positions.map((pos) => ({ pos, type })));
+          const stored = await keyboard.getSwitchTypes(positions);
+          patchKeys([...stored].map(([pos, switchType]) => [pos, { switchType }]));
+          return stored.size === positions.length && positions.every((pos) => stored.get(pos) === type);
         },
       );
     },

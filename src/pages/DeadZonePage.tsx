@@ -62,7 +62,7 @@ export function DeadZonePage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const sample = keys.length ? keys : POSITIONS;
   const actuations = groupBy(sample, (pos) => current.act(draft, snapshot, pos)).sort((a, b) => b[1].length - a[1].length);
   const chart = {
-    travelUm: switchTravel(snapshot, sample).travelUm,
+    travelUm: switchTravel(snapshot, sample, draft).travelUm,
     actuationUm: actuations[0]?.[0] ?? 1000,
     enabled: keys.length ? state !== "off" : true,
     topUm: keys.length ? top.min : 100,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Hero68 } from "../hero68";
-import { Cmd, Info, readU16, u16, u32 } from "../protocol";
+import { Hero68, parseTravel, type TravelSample } from "../hero68";
+import { buildFrame, Cmd, Info, readU16, Travel, u16, u32 } from "../protocol";
 import { HidTimeoutError, HidTransport } from "../transport";
 import { fakeDevice, header } from "./fake-device";
 
@@ -101,6 +101,23 @@ describe("Hero68", () => {
     expect(sent).toHaveLength(0);
   });
 
+  it("writes switch types in frames of 18 keys, position then type", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_SWITCH_TYPE ? header(req, 0) : null));
+    const keys = Array.from({ length: 19 }, (_, i) => ({ pos: i + 1, type: i === 0 ? 25 : 0 }));
+    await keyboard.setSwitchTypes(keys);
+    expect(sent).toHaveLength(2);
+    expect(Array.from(sent[0].subarray(0, 6))).toEqual([Cmd.SET_SWITCH_TYPE, 0, 0, 1, 0, 54]);
+    expect(Array.from(sent[0].subarray(6, 12))).toEqual([0, 1, 25, 0, 2, 0]);
+    expect(Array.from(sent[1].subarray(0, 9))).toEqual([Cmd.SET_SWITCH_TYPE, 0, 0, 1, 0, 3, 0, 19, 0]);
+  });
+
+  it("refuses a switch type that isn't one byte", async () => {
+    const { keyboard, sent } = keyboardWith(() => null);
+    await expect(keyboard.setSwitchTypes([{ pos: 1, type: 256 }])).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setSwitchTypes([{ pos: 1, type: 1.5 }])).rejects.toBeInstanceOf(RangeError);
+    expect(sent).toHaveLength(0);
+  });
+
   it("writes a keymap layer in frames of 9 keys, position then 32-bit function", async () => {
     const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_KEYS ? header(req, req[5]) : null));
     const keys = Array.from({ length: 10 }, (_, i) => ({ pos: i + 1, code: 0x0d010000 + i }));
@@ -143,6 +160,51 @@ describe("Hero68", () => {
       req[0] === Cmd.GET_ADVANCED_KEY ? [req[0], req[1], 2, 1, 0, 12, ...u16(42), ...u32(0x00e00000), ...u32(0x29), ...u16(200)] : null,
     );
     expect(await keyboard.getAdvancedKey(0, 42)).toEqual({ type: "MT", pos: 42, hold: 0x00e00000, tap: 0x29, delayMs: 200 });
+  });
+
+  it("parses live travel frames: distance in precision steps, bit 15 of the reading is pressed", () => {
+    // Recorded on the keyboard: W at rest, then C pressed 2.05 mm.
+    const rest = buildFrame(Cmd.TRAVEL_STREAM, { sub: Travel.KEYS, data: [0x00, 0x1e, 0x00, 0x01, 0x25, 0x2e] });
+    expect(parseTravel(rest, 10)).toEqual([{ pos: 30, depthUm: 10, ad: 0x252e, pressed: false }]);
+    const pressed = buildFrame(Cmd.TRAVEL_STREAM, { sub: Travel.KEYS, data: [0x00, 0x3a, ...u16(205), ...u16(0x8000 | 4200)] });
+    expect(parseTravel(pressed, 10)).toEqual([{ pos: 58, depthUm: 2050, ad: 4200, pressed: true }]);
+    expect(parseTravel(buildFrame(Cmd.TRAVEL_STREAM, { sub: Travel.EXIT }), 10)).toBeNull();
+    expect(parseTravel(buildFrame(Cmd.GET_ACTUATION), 10)).toBeNull();
+  });
+
+  it("starts, requests and exits live travel, sending the samples to listeners", async () => {
+    const { keyboard, sent } = keyboardWith((req) => {
+      if (req[0] !== Cmd.TRAVEL_STREAM) return null;
+      if (req[1] !== Travel.KEYS) return header(req, 0);
+      const data: number[] = [];
+      for (let i = 0; i < req[5] / 2; i++) data.push(...u16(readU16(req, 6 + i * 2)), ...u16(i), ...u16(9000));
+      return [...header(req, data.length), ...data];
+    });
+    const got: TravelSample[][] = [];
+    const off = keyboard.onTravel((samples) => got.push(samples));
+    await keyboard.startTravel();
+    await keyboard.requestTravel([30, 43]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await keyboard.stopTravel();
+    off();
+    expect(sent.map((frame) => [frame[0], frame[1]])).toEqual([
+      [0x98, Travel.START],
+      [0x98, Travel.KEYS],
+      [0x98, Travel.EXIT],
+    ]);
+    expect(Array.from(sent[1].subarray(5, 10))).toEqual([4, 0, 30, 0, 43]);
+    expect(got).toEqual([
+      [
+        { pos: 30, depthUm: 0, ad: 9000, pressed: false },
+        { pos: 43, depthUm: 10, ad: 9000, pressed: false },
+      ],
+    ]);
+  });
+
+  it("never asks for more than 9 keys of live travel in one frame", async () => {
+    const { keyboard, sent } = keyboardWith(() => null);
+    await expect(keyboard.requestTravel(Array.from({ length: 10 }, (_, i) => i + 1))).rejects.toBeInstanceOf(RangeError);
+    expect(sent).toHaveLength(0);
   });
 
   it("retries and then times out", async () => {

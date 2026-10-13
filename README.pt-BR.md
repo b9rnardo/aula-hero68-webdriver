@@ -35,6 +35,9 @@
 | **Ponto de atuação** por tecla, de 0,10 mm até o curso todo do switch | ✅ | ✅ |
 | **Rapid Trigger** com sensibilidade de pressionar e soltar separadas, em passos de 0,01 mm | ✅ | ✅ |
 | **Zonas mortas** no topo e no fundo do curso | ✅ | ✅ |
+| **Tipo de switch** por tecla, entre os modelos que o teclado aceita | ✅ | ✅ |
+| **Curso ao vivo**: quanto cada tecla desceu, cerca de 20 vezes por segundo | ✅ | – |
+| **Calibração** | – | em breve |
 | **Mapeamento de teclas** nas camadas principal, Fn e Fn2 | ✅ | ✅ |
 | **Polling rate** de 125 a 8000 Hz | ✅ | ✅ |
 | **Trava Win, modo Mac, debounce e calibração adaptativa** | ✅ | ✅ |

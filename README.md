@@ -35,6 +35,9 @@
 | **Actuation point** per key, from 0.10 mm to the full switch travel | ✅ | ✅ |
 | **Rapid Trigger** with separate press and release sensitivity, in 0.01 mm steps | ✅ | ✅ |
 | **Dead zones** at the top and bottom of the travel | ✅ | ✅ |
+| **Switch type** per key, from the models the keyboard accepts | ✅ | ✅ |
+| **Live travel**: how far each key is down, about 20 times a second | ✅ | – |
+| **Calibration** | – | planned |
 | **Key remapping** on the main, Fn and Fn2 layers | ✅ | ✅ |
 | **Polling rate** from 125 to 8000 Hz | ✅ | ✅ |
 | **Win lock, Mac mode, debounce and adaptive calibration** | ✅ | ✅ |

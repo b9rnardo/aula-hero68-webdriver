@@ -26,7 +26,7 @@ export function ActuationPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const act = useCallback((pos: number) => current.act(draft, snapshot, pos), [draft, snapshot]);
 
   const keys = selected.filter((pos) => act(pos) !== undefined);
-  const maxTravel = keys.length ? Math.max(...keys.map((pos) => travelOf(snapshot, pos))) : switchTravel(snapshot, POSITIONS).travelUm;
+  const maxTravel = keys.length ? Math.max(...keys.map((pos) => travelOf(snapshot, pos, draft))) : switchTravel(snapshot, POSITIONS, draft).travelUm;
   const model = useMm({
     values: keys.map((pos) => act(pos)!),
     saved: keys.map((pos) => snapshot.keys[pos]?.actuationUm),
@@ -36,11 +36,11 @@ export function ActuationPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
     disabled: !writable,
     apply: (um) =>
       edit("act", (d) => {
-        for (const pos of keys) d.act[pos] = Math.min(um, travelOf(snapshot, pos));
+        for (const pos of keys) d.act[pos] = Math.min(um, travelOf(snapshot, pos, d));
       }),
   });
   const read = POSITIONS.some((pos) => snapshot.keys[pos]?.actuationUm !== undefined);
-  const diagramTravel = switchTravel(snapshot, keys.length ? keys : POSITIONS).travelUm;
+  const diagramTravel = switchTravel(snapshot, keys.length ? keys : POSITIONS, draft).travelUm;
 
   return (
     <>
