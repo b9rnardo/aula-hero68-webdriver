@@ -2,7 +2,7 @@
 
 Driver web não oficial para o teclado magnético **AULA HERO 68 HE (com fio)**. Roda no navegador via WebHID, sem instalar nada.
 
-> **Fase 2: gravação aos poucos.** Esta versão lê tudo do teclado e gera um backup em JSON. Por enquanto grava o **ponto de atuação** e o **Rapid Trigger**. Cada ajuste só passa a ser gravado depois de testado no teclado real (ver `docs/analise.md`, seção 5).
+> **Fase 2: gravação aos poucos.** Esta versão lê tudo do teclado e gera um backup em JSON. Por enquanto grava o **ponto de atuação**, o **Rapid Trigger**, as **zonas mortas**, os **ajustes gerais** e o **mapeamento**. Cada ajuste só passa a ser gravado depois de testado no teclado real (ver `docs/analise.md`, seção 5).
 
 ## O que já faz
 
@@ -13,11 +13,12 @@ Interface inspirada no Wootility: barra de ícones, menu lateral por seção, te
 - **Ponto de atuação, Rapid Trigger e zonas mortas:** valor de cada tecla, distribuição clicável e o curso do switch.
 - **Gravar a atuação:** escolha as teclas, ajuste o valor (de 0,10 mm até o curso do switch) e clique em Aplicar. O app relê o teclado para confirmar.
 - **Gravar o Rapid Trigger:** liga e desliga por tecla e ajusta a sensibilidade de pressionar e soltar (de 0,01 mm até o curso do switch), juntas ou separadas. Um gráfico simula a tecla com os valores escolhidos. O app relê o teclado para confirmar.
-- **Mapeamento:** as 3 camadas (principal, Fn, Fn2), teclas diferentes do padrão de fábrica e biblioteca de funções com busca.
+- **Gravar as zonas mortas:** liga e desliga por tecla e ajusta as zonas superior e inferior (de 0 a 0,50 mm). Um gráfico mostra as partes do curso que a tecla ignora. O app relê o teclado para confirmar.
+- **Mapeamento:** as 3 camadas (principal, Fn, Fn2), teclas diferentes do padrão de fábrica e biblioteca de funções com busca. Para trocar, selecione as teclas, escolha a função e clique em Aplicar; "Restaurar padrão" volta ao de fábrica. O app relê o teclado para confirmar.
 - **Teclas avançadas:** DKS, MT, TGL, SOCD, MPT e END de cada camada.
 - **Iluminação:** efeito, cor, brilho e velocidade da luz principal e lateral, e as cores por tecla.
 - **Meus perfis:** perfis do teclado, baixar backup em JSON e abrir um backup salvo sem o teclado.
-- **Ajustes:** polling rate, trava Win, modo Mac, debounce, calibração adaptativa, suspensão, idioma e log dos pacotes HID.
+- **Ajustes:** polling rate, trava Win, modo Mac, debounce e calibração adaptativa, todos graváveis; suspensão (só leitura), idioma e log dos pacotes HID. Ao trocar o polling, o teclado reconecta sozinho e o app o relê.
 - **Demonstração:** mostra a interface com valores de exemplo, sem teclado.
 - Português e inglês.
 

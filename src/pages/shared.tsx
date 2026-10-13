@@ -33,6 +33,11 @@ export function switchTravel(snapshot: KeyboardSnapshot, positions: number[]) {
   return sw ? { travelUm: sw.travelUm, name: sw.name, estimated: false } : { travelUm: DEFAULT_TRAVEL_UM, name: null, estimated: true };
 }
 
+/** Actuation point of most of the keys, or undefined when it wasn't read. */
+export function commonActuation(snapshot: KeyboardSnapshot, positions: number[]) {
+  return groupBy(positions, (pos) => snapshot.keys[pos]?.actuationUm).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
+}
+
 /** One value → keys row; clicking selects those keys. */
 export function DistributionRow({
   label,

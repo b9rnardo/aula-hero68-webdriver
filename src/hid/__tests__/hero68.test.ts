@@ -79,6 +79,57 @@ describe("Hero68", () => {
     expect(sent[1][5]).toBe(8);
   });
 
+  it("writes dead zones in frames of 6 keys, top, bottom, global, then on/off", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_DEAD_ZONE ? header(req, 0) : null));
+    keyboard.precision = { rt: 10, distance: 10 };
+    const keys = Array.from({ length: 7 }, (_, i) => ({ pos: i + 1, enabled: i > 0, topUm: 204, bottomUm: 0, globalFlag: 0 }));
+    await keyboard.setDeadZones(keys);
+    expect(sent).toHaveLength(2);
+    expect(sent[0][0]).toBe(Cmd.SET_DEAD_ZONE);
+    expect(sent[0][1]).toBe(0);
+    expect(sent[0][5]).toBe(48);
+    expect(Array.from(sent[0].subarray(6, 14))).toEqual([0, 1, ...u16(20), ...u16(0), 1, 0]);
+    expect(sent[0][21]).toBe(1);
+    expect(sent[1][5]).toBe(8);
+  });
+
+  it("refuses dead zones outside the supported range", async () => {
+    const { keyboard, sent } = keyboardWith(() => null);
+    const key = { pos: 1, enabled: true, topUm: 100, bottomUm: 100, globalFlag: 1 };
+    await expect(keyboard.setDeadZones([{ ...key, topUm: -10 }])).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setDeadZones([{ ...key, bottomUm: 510 }])).rejects.toBeInstanceOf(RangeError);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("writes a keymap layer in frames of 9 keys, position then 32-bit function", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_KEYS ? header(req, req[5]) : null));
+    const keys = Array.from({ length: 10 }, (_, i) => ({ pos: i + 1, code: 0x0d010000 + i }));
+    await keyboard.setKeymap(2, keys);
+    expect(sent).toHaveLength(2);
+    expect(sent.every((frame) => frame[0] === Cmd.SET_KEYS && frame[1] === 2)).toBe(true);
+    expect(sent[0][5]).toBe(54);
+    expect(Array.from(sent[0].subarray(6, 12))).toEqual([0, 1, 0x0d, 0x01, 0, 0]);
+    expect(Array.from(sent[1].subarray(5, 12))).toEqual([6, 0, 10, 0x0d, 0x01, 0, 9]);
+    await expect(keyboard.setKeymap(3, keys)).rejects.toBeInstanceOf(RangeError);
+  });
+
+  it("writes one-byte settings like the official driver", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_CONFIG ? header(req, 1) : null));
+    await keyboard.setWinLock(false);
+    await keyboard.setMacMode(true);
+    await keyboard.setKeyCombo(true);
+    await keyboard.setAutoCalibrate(false);
+    await keyboard.setPollingLevel(4);
+    expect(sent.map((frame) => Array.from(frame.subarray(0, 7)))).toEqual([
+      [0x04, 0x15, 0, 1, 0, 1, 0],
+      [0x04, 0x11, 0, 1, 0, 1, 1],
+      [0x04, 0x18, 0, 1, 0, 1, 1],
+      [0x04, 0x19, 0, 1, 0, 1, 0],
+      [0x04, 0x17, 0, 1, 0, 1, 4],
+    ]);
+    await expect(keyboard.setPollingLevel(7)).rejects.toBeInstanceOf(RangeError);
+  });
+
   it("refuses rapid trigger outside the supported range", async () => {
     const { keyboard, sent } = keyboardWith(() => null);
     const key = { pos: 1, enabled: true, pressUm: 100, releaseUm: 100, globalFlag: 1 };

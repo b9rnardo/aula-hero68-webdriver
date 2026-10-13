@@ -335,8 +335,38 @@ Leitura completa feita com o código do app (`readSnapshot`) por node-hid. O tec
   - a atuação das teclas não mudou em nenhuma etapa.
 - No app, só os campos alterados são gravados: o restante de cada tecla vem da leitura feita logo antes. Depois o app relê e avisa se algo não bateu.
 
+**Gravação das zonas mortas (`0x16`), validada**
+- O frame segue o do driver oficial: sub 0, total 1, índice 0 e registros de 8 bytes `[pos u16, topo u16, fundo u16, global u8, ativo u8]`, até 6 por frame. O passo é a precisão `distance` (10 µm). Os limites são os do driver oficial: de 0 a 0,50 mm em cada zona.
+- No driver oficial, `global = 1` é o modo por tecla e 0 segue os ajustes globais. Ele manda o valor lido, trocando 0 por 1, e o app faz o mesmo. Todas as teclas leram `global = 1`.
+- Mesma espera e tentativas do Rapid Trigger (1 s, até 3 vezes). O teclado responde ecoando o frame, e não há comando de salvar.
+- Antes do teste, todas as teclas estavam desligadas com 0,10 / 0,10 mm (topo / fundo).
+- Teste de ida e volta na tecla V:
+  - ligou com 0,20 / 0,30 mm (`16 00 00 01 00 08 00 3b 00 14 00 1e 01 01`), e a releitura das 68 teclas mostrou só V alterada;
+  - desligou (`… 00 3b 00 14 00 1e 01 00`), e de novo só V mudou;
+  - voltou para 0,10 / 0,10 mm (`… 00 3b 00 0a 00 0a 01 00`), e a releitura ficou igual à de antes do teste;
+  - a atuação e o Rapid Trigger não mudaram em nenhuma etapa.
+- O texto do driver oficial explica para que servem: a zona superior reduz toques acidentais, e a inferior evita que a tecla solte sozinha com um leve tremor do dedo no fundo do curso.
+- No app, como no Rapid Trigger, só os campos alterados são gravados, e o app relê o teclado para confirmar.
+
+**Gravação dos ajustes gerais (`0x04`), validada**
+- O frame é o do driver oficial: `04 id 00 01 00 01 valor`, um byte de dado. Os ids são os mesmos da leitura (`0x84`): modo Mac `0x11`, trava Win `0x15`, polling `0x17`, debounce `0x18` e calibração adaptativa `0x19`.
+- Nos ajustes liga/desliga o teclado responde ecoando o frame, e não há comando de salvar.
+- Teste de ida e volta em cada um (trava Win, modo Mac, debounce e calibração): cada valor foi invertido e depois restaurado. Por exemplo, a trava Win desligada foi `04 15 00 01 00 01 00`. Em cada etapa só o ajuste do teste mudou, e a atuação das 68 teclas ficou igual.
+- **Polling:** níveis 0 = 1000, 1 = 500, 2 = 250, 3 = 125, 4 = 8000, 5 = 4000 e 6 = 2000 Hz. A interface oficial do modelo com fio oferece os 7.
+  - Depois de `04 17 00 01 00 01 01`, o teclado não ecoa. Ele se desconecta na hora e volta em cerca de 1,5 s, já com o novo valor. O driver oficial manda o usuário para a lista de dispositivos e recarrega a página.
+  - Teste: 1000 → 500 → 1000 Hz. Depois de cada reconexão a leitura mostrou o nível novo, e no fim todos os ajustes estavam iguais aos de antes.
+  - No app, a troca de polling espera o teclado voltar e relê tudo sozinho. Se ele não voltar em 8 s, o app mostra o aviso de desconectado.
+- A suspensão não aparece na interface oficial do modelo com fio, então o app só a mostra.
+
+**Gravação do mapeamento (`0x03`), validada**
+- O frame segue o do driver oficial: o sub é a camada (0 a 2), total 1, índice 0 e registros de 6 bytes `[pos u16, função u32]`, até 9 por frame. A função usa o formato da seção 2.7.
+- O teclado responde ecoando o frame, e não há comando de salvar.
+- Teste de ida e volta na tecla V (posição 59) da camada principal:
+  - trocou V por B (`03 00 00 01 00 06 00 3b 00 00 00 05`), e a releitura das 3 camadas mostrou só `L0:59` alterada;
+  - voltou para V (`… 00 3b 00 00 00 19`), e as 3 camadas ficaram iguais às de antes do teste.
+- No app, o mapeamento grava na camada aberta e relê as teclas gravadas para confirmar. Ao trocar uma tecla Fn, o app avisa que as camadas Fn deixam de ser acessíveis pelo teclado.
+
 **Ainda não confirmado**
-1. Se a atuação e o Rapid Trigger gravados continuam depois de desconectar o cabo. O driver oficial não manda comando de salvar, então devem continuar.
+1. Se a atuação, o Rapid Trigger, as zonas mortas e o mapeamento gravados continuam depois de desconectar o cabo. O driver oficial não manda comando de salvar, então devem continuar. O polling já continua depois da reconexão.
 2. O significado dos 4 bytes de ação do DKS e as teclas avançadas nas camadas 1 e 2. Nenhuma estava configurada, e isso ficou para quando a gravação for implementada.
 3. O que o valor 0 de suspensão significa na prática.
-4. O comportamento do teclado depois de mudar o polling. O driver oficial recarrega a página, provavelmente porque o teclado reconecta.

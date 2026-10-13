@@ -72,7 +72,7 @@ export function RapidTriggerChart({ travelUm, ...settings }: Props) {
         {mm(settings.actuationUm)}
       </text>
       <text x={RIGHT} y={BOTTOM + 16} textAnchor="end" className="fill-subtle text-[10px]">
-        {t("rt.chartTime")} →
+        {t("chart.time")} →
       </text>
 
       {/* Key movement: muted while released, accent while active */}

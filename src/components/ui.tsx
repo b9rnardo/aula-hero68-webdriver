@@ -150,19 +150,43 @@ export function LevelBar({ value, max, label, left, right }: { value: number; ma
 }
 
 /** Row in a settings list; `selected` marks the current value. */
-export function OptionRow({ selected, children }: { selected: boolean; children: ReactNode }) {
-  return (
-    <li
-      aria-current={selected || undefined}
-      className={cx(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm",
-        selected ? "bg-active font-semibold text-fg" : "bg-hover text-muted",
-      )}
-    >
+/** One choice of a list; with `onSelect` it's a radio button (put the list in a `role="radiogroup"`). */
+export function OptionRow({
+  selected,
+  children,
+  onSelect,
+  disabled,
+}: {
+  selected: boolean;
+  children: ReactNode;
+  onSelect?: () => void;
+  disabled?: boolean;
+}) {
+  const className = cx(
+    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm",
+    selected ? "bg-active font-semibold text-fg" : "bg-hover text-muted",
+    onSelect && !selected && "transition-colors enabled:hover:bg-active/60 enabled:hover:text-fg",
+    onSelect && "outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed",
+  );
+  const content = (
+    <>
       <span className={cx("grid size-4 shrink-0 place-items-center rounded-full", selected ? "bg-accent" : "border border-key-line")}>
         {selected && <span className="size-1.5 rounded-full bg-accent-ink" />}
       </span>
       {children}
+    </>
+  );
+  if (!onSelect)
+    return (
+      <li aria-current={selected || undefined} className={className}>
+        {content}
+      </li>
+    );
+  return (
+    <li>
+      <button type="button" role="radio" aria-checked={selected} disabled={disabled} onClick={onSelect} className={className}>
+        {content}
+      </button>
     </li>
   );
 }

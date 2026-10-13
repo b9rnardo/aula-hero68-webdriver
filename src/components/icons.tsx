@@ -132,6 +132,12 @@ export const InfoIcon = (p: IconProps) => (
     <path d="M12 11v5M12 8h.01" />
   </Icon>
 );
+export const WarnIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M10.3 4.2 2.8 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" />
+    <path d="M12 9.5v4.5M12 17h.01" />
+  </Icon>
+);
 export const LockIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="5" y="11" width="14" height="9" rx="2" />
@@ -160,12 +166,14 @@ export const SidebarIcon = (p: IconProps) => (
   </Icon>
 );
 
-/** The app mark: a keycap in a rounded frame. */
+/** The app mark: an H made of two key travels, with the actuation point on the dashed line between them. */
 export function Logo({ size = 30 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect x="2" y="5" width="28" height="22" rx="5" fill="none" stroke="currentColor" strokeWidth="2.4" />
-      <path d="M9 12v8M16 12v8M23 12v8M9 20h14" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" aria-hidden>
+      <rect x="5" y="4" width="6" height="24" rx="3" />
+      <rect x="21" y="4" width="6" height="24" rx="3" />
+      <path d="M11 18.5h10" stroke="currentColor" strokeWidth="2.4" strokeDasharray="2.2 2.2" />
+      <circle cx="16" cy="18.5" r="3.3" />
     </svg>
   );
 }

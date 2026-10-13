@@ -10,6 +10,7 @@ import {
   readU16,
   readU32,
   u16,
+  u32,
 } from "./protocol";
 import { HidTransport, type RequestOptions } from "./transport";
 
@@ -34,6 +35,8 @@ export const KNOWN_MODELS: Record<number, string> = {
 };
 
 export const LAYER_COUNT = 3;
+/** Polling levels go from 0 to 6 (see getPollingLevel). */
+export const POLLING_LEVEL_MAX = 6;
 export const PROFILE_COUNT = 3;
 
 /** Actuation limits in µm. The real maximum is the switch travel; the firmware accepts up to 4.0 mm. */
@@ -41,6 +44,8 @@ export const ACTUATION_MIN_UM = 100;
 export const ACTUATION_MAX_UM = 4000;
 /** Rapid Trigger sensitivity goes from one precision step up to 4.0 mm, like the official driver. */
 export const RAPID_TRIGGER_MAX_UM = 4000;
+/** Top and bottom dead zones go from 0 to 0.5 mm, like the official driver. */
+export const DEAD_ZONE_MAX_UM = 500;
 
 export interface Rgb {
   r: number;
@@ -216,6 +221,39 @@ export class Hero68 {
     return (await this.getConfig(Config.AUTO_CALIBRATE, 1))[0] === 1;
   }
 
+  /**
+   * Writes a one-byte setting, in the same frame as the official driver (`04 id 00 01 00 01 value`).
+   * The keyboard echoes the frame; there is no separate save command.
+   */
+  private async setConfig(id: number, value: number, options: RequestOptions = { timeoutMs: 500, retries: 2 }) {
+    await this.request(Cmd.SET_CONFIG, { sub: id, data: [value] }, options);
+  }
+
+  /**
+   * Level as in getPollingLevel. The keyboard reconnects to the computer after the change, so the
+   * echo may never arrive: a timeout here doesn't mean the write failed.
+   */
+  async setPollingLevel(level: number): Promise<void> {
+    if (!(Number.isInteger(level) && level >= 0 && level <= POLLING_LEVEL_MAX)) throw new RangeError(`polling level out of range: ${level}`);
+    await this.setConfig(Config.POLLING, level, { timeoutMs: 1000, retries: 0 });
+  }
+
+  async setWinLock(on: boolean): Promise<void> {
+    await this.setConfig(Config.WIN_LOCK, on ? 1 : 0);
+  }
+
+  async setMacMode(on: boolean): Promise<void> {
+    await this.setConfig(Config.MAC_MODE, on ? 1 : 0);
+  }
+
+  async setKeyCombo(on: boolean): Promise<void> {
+    await this.setConfig(Config.KEY_COMBO, on ? 1 : 0);
+  }
+
+  async setAutoCalibrate(on: boolean): Promise<void> {
+    await this.setConfig(Config.AUTO_CALIBRATE, on ? 1 : 0);
+  }
+
   /** Experimental: the official driver never reads this one successfully. */
   async getSleepLevel(): Promise<number> {
     const reply = await this.request(Cmd.GET_CONFIG, { sub: Config.SLEEP, length: 1 }, { timeoutMs: 400, retries: 1 });
@@ -232,6 +270,15 @@ export class Hero68 {
       for (const record of records(frameDataRaw(reply), 6, group.length)) result.set(readU16(record, 0), readU32(record, 2));
     }
     return result;
+  }
+
+  /** Sets key functions on one layer, up to 9 keys per frame (`pos u16, keycode u32`), like the official driver. */
+  async setKeymap(layer: number, keys: { pos: number; code: number }[]): Promise<void> {
+    if (!(Number.isInteger(layer) && layer >= 0 && layer < LAYER_COUNT)) throw new RangeError(`layer out of range: ${layer}`);
+    for (const group of chunk(keys, 9)) {
+      const data = group.flatMap(({ pos, code }) => [...u16(pos), ...u32(code)]);
+      await this.request(Cmd.SET_KEYS, { sub: layer, data }, { timeoutMs: 500, retries: 2 });
+    }
   }
 
   // ── Per-key performance ───────────────────────────────────────────────
@@ -320,6 +367,28 @@ export class Hero68 {
         });
     }
     return out;
+  }
+
+  /**
+   * Writes the dead zones of each key: top and bottom distance and on/off, rounded to the precision.
+   * Like the official driver when keys are edited one by one, the global flag goes out as 1.
+   * The keyboard echoes each frame.
+   */
+  async setDeadZones(keys: KeyDeadZone[]): Promise<void> {
+    for (const { topUm, bottomUm } of keys)
+      for (const um of [topUm, bottomUm])
+        if (!(um >= 0 && um <= DEAD_ZONE_MAX_UM)) throw new RangeError(`dead zone out of range: ${um} µm`);
+    for (const group of chunk(keys, 6)) {
+      const data = group.flatMap(({ pos, enabled, topUm, bottomUm, globalFlag }) => [
+        ...u16(pos),
+        ...u16(Math.round(topUm / this.precision.distance)),
+        ...u16(Math.round(bottomUm / this.precision.distance)),
+        globalFlag || 1,
+        enabled ? 1 : 0,
+      ]);
+      // The official driver sends each frame up to 3 times.
+      await this.request(Cmd.SET_DEAD_ZONE, { data }, { timeoutMs: 1000, retries: 2 });
+    }
   }
 
   async getSwitchTypes(positions: number[]): Promise<Map<number, number>> {

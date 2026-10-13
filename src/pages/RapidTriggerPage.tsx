@@ -3,9 +3,8 @@ import { useShallow } from "zustand/react/shallow";
 import { LockIcon } from "../components/icons";
 import { KeyboardStage, Page, SelectionActions } from "../components/KeyboardStage";
 import { RapidTriggerChart } from "../components/RapidTriggerChart";
-import { Slider } from "../components/Slider";
 import { Card, cx, Empty, Eyebrow, Notice } from "../components/ui";
-import { ApplyRow, MmField, mmDraft, Toggle, useSavedFlag } from "../components/WriteControls";
+import { ApplyRow, mmDraft, MmSliderField, Toggle, useSavedFlag } from "../components/WriteControls";
 import { keyLegend } from "../data/keycodes";
 import { POSITIONS } from "../data/layout";
 import { RAPID_TRIGGER_MAX_UM } from "../hid/hero68";
@@ -14,7 +13,7 @@ import { useI18n } from "../i18n";
 import { groupBy, spread, useTarget, type Spread } from "../lib/target";
 import { canWrite, useDriver } from "../store/driver";
 import { useUi } from "../store/ui";
-import { DistributionRow, switchTravel } from "./shared";
+import { commonActuation, DistributionRow, switchTravel } from "./shared";
 
 type RapidTrigger = NonNullable<KeySnapshot["rapidTrigger"]>;
 
@@ -80,66 +79,6 @@ export function RapidTriggerPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   );
 }
 
-/** One sensitivity: label and value on a row, the slider under it with high/low at the ends. */
-function SensitivityField(props: {
-  id: string;
-  label: string;
-  text: string;
-  draft: number | null;
-  invalid: boolean;
-  range: Spread | null;
-  minUm: number;
-  maxUm: number;
-  stepUm: number;
-  disabled: boolean;
-  className?: string;
-  onEdit(text: string): void;
-  onCommit(): void;
-}) {
-  const { t, mm } = useI18n();
-  const { id, label, text, draft, invalid, range, minUm, maxUm, stepUm, disabled, className, onEdit, onCommit } = props;
-  const current = range && !range.mixed ? range.min : null;
-  const value = draft ?? current;
-  return (
-    <div className={className}>
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={id} className="text-sm font-semibold text-fg-2">
-          {label}
-        </label>
-        <MmField
-          id={id}
-          size="md"
-          value={text}
-          invalid={invalid}
-          disabled={disabled}
-          placeholder={range?.mixed ? "—" : undefined}
-          describedBy="rt-limits"
-          onChange={onEdit}
-          onBlur={() => draft !== null && onEdit(mm(draft))}
-        />
-      </div>
-      <div className="mt-1">
-        <Slider
-          value={value}
-          min={minUm}
-          max={maxUm}
-          step={stepUm}
-          band={range}
-          disabled={disabled}
-          label={label}
-          valueText={value === null ? t("rt.mixed") : `${mm(value)} mm`}
-          onChange={(um) => onEdit(mm(um))}
-          onCommit={onCommit}
-        />
-      </div>
-      <div className="flex justify-between text-[11px] font-semibold tracking-wide text-subtle uppercase">
-        <span>{t("rt.high")}</span>
-        <span>{t("rt.low")}</span>
-      </div>
-    </div>
-  );
-}
-
 function RapidTriggerCard({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const { t, mm } = useI18n();
   const target = useTarget();
@@ -159,7 +98,7 @@ function RapidTriggerCard({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const travel = switchTravel(snapshot, target.positions);
   const stepUm = snapshot.device.precision?.rt || 10;
   const maxUm = Math.min(travel.travelUm, RAPID_TRIGGER_MAX_UM);
-  const actuationUm = groupBy(target.positions, (pos) => snapshot.keys[pos]?.actuationUm).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
+  const actuationUm = commonActuation(snapshot, target.positions);
 
   const [enabled, setEnabled] = useState(storedOn);
   const [pressText, setPressText] = useState(storedPress === null ? "" : mm(storedPress));
@@ -196,6 +135,8 @@ function RapidTriggerCard({ snapshot }: { snapshot: KeyboardSnapshot }) {
     maxUm,
     stepUm,
     disabled,
+    describedBy: "rt-limits",
+    ends: [t("rt.high"), t("rt.low")] as [string, string],
     onCommit: () => void apply(),
   };
 
@@ -236,7 +177,7 @@ function RapidTriggerCard({ snapshot }: { snapshot: KeyboardSnapshot }) {
               }}
             >
               <div className={cx("grid gap-x-6 gap-y-3 transition-opacity sm:grid-cols-2", enabled === false && "opacity-60")}>
-                <SensitivityField
+                <MmSliderField
                   {...field}
                   id="rt-press"
                   className={cx(linked && "sm:col-span-2")}
@@ -248,7 +189,7 @@ function RapidTriggerCard({ snapshot }: { snapshot: KeyboardSnapshot }) {
                   onEdit={edit(setPressText)}
                 />
                 {!linked && (
-                  <SensitivityField
+                  <MmSliderField
                     {...field}
                     id="rt-release"
                     label={t("rt.release")}
@@ -298,7 +239,7 @@ function RapidTriggerCard({ snapshot }: { snapshot: KeyboardSnapshot }) {
             <span className="flex flex-wrap justify-center gap-x-3 gap-y-1">
               <span className="flex items-center gap-1.5">
                 <span className="w-3.5 border-t border-dashed border-muted" />
-                {t("rt.chartActuation")}
+                {t("chart.actuation")}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="h-[3px] w-3.5 rounded-full bg-accent" />

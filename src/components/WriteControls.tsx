@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../i18n";
+import type { Spread } from "../lib/target";
 import { CheckIcon } from "./icons";
+import { Slider } from "./Slider";
 import { Button, cx } from "./ui";
 
 /** "1,25" or "1.25" (mm) → µm; null when it isn't a number. */
@@ -104,13 +106,19 @@ export function ApplyRow({
       <Button type="submit" variant="primary" size={size} disabled={disabled || writing}>
         {writing ? t("write.writing") : t("write.apply", { target })}
       </Button>
-      {saved && (
-        <p role="status" className="flex items-center gap-1.5 text-sm font-semibold text-ok">
-          <CheckIcon size={16} />
-          {t(demo ? "write.savedDemo" : "write.saved")}
-        </p>
-      )}
+      {saved && <SavedNote demo={demo} />}
     </div>
+  );
+}
+
+/** Confirmation shown for a moment after a write. */
+export function SavedNote({ demo }: { demo: boolean }) {
+  const { t } = useI18n();
+  return (
+    <span role="status" className="flex items-center gap-1.5 text-sm font-semibold text-ok">
+      <CheckIcon size={16} />
+      {t(demo ? "write.savedDemo" : "write.saved")}
+    </span>
   );
 }
 
@@ -136,5 +144,72 @@ export function Toggle({ on, label, disabled, onChange }: { on: boolean | null; 
         )}
       />
     </button>
+  );
+}
+
+/**
+ * A distance with its text field and a horizontal slider under it, for one value shared by the selected keys.
+ * `range` is what the keys hold now: a band on the slider while they differ and nothing was typed.
+ */
+export function MmSliderField(props: {
+  id: string;
+  label: string;
+  text: string;
+  draft: number | null;
+  invalid: boolean;
+  range: Spread | null;
+  minUm: number;
+  maxUm: number;
+  stepUm: number;
+  disabled: boolean;
+  describedBy: string;
+  /** Captions under the two ends of the slider. */
+  ends?: [string, string];
+  className?: string;
+  onEdit(text: string): void;
+  onCommit(): void;
+}) {
+  const { t, mm } = useI18n();
+  const { id, label, text, draft, invalid, range, minUm, maxUm, stepUm, disabled, describedBy, ends, className, onEdit, onCommit } = props;
+  const value = draft ?? (range && !range.mixed ? range.min : null);
+  return (
+    <div className={className}>
+      <div className="flex items-center justify-between gap-3">
+        <label htmlFor={id} className="text-sm font-semibold text-fg-2">
+          {label}
+        </label>
+        <MmField
+          id={id}
+          size="md"
+          value={text}
+          invalid={invalid}
+          disabled={disabled}
+          placeholder={range?.mixed ? "—" : undefined}
+          describedBy={describedBy}
+          onChange={onEdit}
+          onBlur={() => draft !== null && onEdit(mm(draft))}
+        />
+      </div>
+      <div className="mt-1">
+        <Slider
+          value={value}
+          min={minUm}
+          max={maxUm}
+          step={stepUm}
+          band={range}
+          disabled={disabled}
+          label={label}
+          valueText={value === null ? t("value.mixed") : `${mm(value)} mm`}
+          onChange={(um) => onEdit(mm(um))}
+          onCommit={onCommit}
+        />
+      </div>
+      {ends && (
+        <div className="flex justify-between text-[11px] font-semibold tracking-wide text-subtle uppercase">
+          <span>{ends[0]}</span>
+          <span>{ends[1]}</span>
+        </div>
+      )}
+    </div>
   );
 }

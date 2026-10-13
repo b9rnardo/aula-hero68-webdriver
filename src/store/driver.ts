@@ -37,6 +37,13 @@ const MAX_PACKETS = 600;
 type RapidTrigger = NonNullable<KeySnapshot["rapidTrigger"]>;
 /** Used in the demo for keys whose Rapid Trigger was never read. */
 const DEFAULT_RAPID_TRIGGER: RapidTrigger = { enabled: false, pressUm: 400, releaseUm: 400 };
+type DeadZone = NonNullable<KeySnapshot["deadZone"]>;
+/** Used in the demo for keys whose dead zones were never read (what the keyboard came with). */
+const DEFAULT_DEAD_ZONE: DeadZone = { enabled: false, topUm: 100, bottomUm: 100 };
+
+export type ToggleSetting = "winLock" | "macMode" | "keyCombo" | "autoCalibrate";
+/** How long a disconnect counts as the reconnect a polling change causes, and how long to wait for it. */
+const RECONNECT_MS = 8000;
 
 /** The value the keyboard stores for `um` at a given precision. */
 const snap = (um: number, step: number) => Math.round(um / step) * step;
@@ -78,6 +85,13 @@ interface DriverState {
   setActuation(positions: number[], actuationUm: number): Promise<boolean>;
   /** Changes Rapid Trigger fields of the given keys; fields left out keep each key's current value. */
   setRapidTrigger(positions: number[], change: Partial<RapidTrigger>): Promise<boolean>;
+  /** Changes dead zone fields of the given keys; fields left out keep each key's current value. */
+  setDeadZones(positions: number[], change: Partial<DeadZone>): Promise<boolean>;
+  /** Sets the function of keys on one layer (0 base, 1 Fn, 2 Fn2) and reads them back. */
+  setKeymap(layer: number, keys: { pos: number; code: number }[]): Promise<boolean>;
+  setSetting(key: ToggleSetting, on: boolean): Promise<boolean>;
+  /** The keyboard reconnects after a polling change; this waits for it and confirms with the fresh read. */
+  setPolling(level: number): Promise<boolean>;
   openBackup(file: File): Promise<boolean>;
   startDemo(): void;
   /** Leaves the demo or closes an opened backup. */
@@ -88,8 +102,11 @@ interface DriverState {
 
 let detach: (() => void)[] = [];
 let packetId = 0;
+/** Set while a polling change is expected to drop and re-attach the keyboard. */
+let reconnectingSince = 0;
+const awaitingReconnect = () => Date.now() - reconnectingSince < RECONNECT_MS;
 
-export const useDriver = create<DriverState>()((set, get) => {
+export const useDriver = create<DriverState>()((set, get, store) => {
   const t = (key: MessageKey, vars?: Vars) => translate(get().lang, key, vars);
 
   function describeError(error: unknown) {
@@ -112,13 +129,43 @@ export const useDriver = create<DriverState>()((set, get) => {
     );
   }
 
+  function patchSettings(values: Partial<KeyboardSnapshot["settings"]>) {
+    set(({ snapshot }) => (snapshot ? { snapshot: { ...snapshot, settings: { ...snapshot.settings, ...values } } } : {}));
+  }
+
+  function patchLayer(layer: number, values: [number, number][]) {
+    set(({ snapshot }) => {
+      if (!snapshot) return {};
+      const layers = [...snapshot.layers];
+      layers[layer] = { ...layers[layer], ...Object.fromEntries(values) };
+      return { snapshot: { ...snapshot, layers } };
+    });
+  }
+
+  /** Resolves true once the state matches, or false after `timeoutMs`. */
+  function waitFor(test: (state: DriverState) => boolean, timeoutMs: number) {
+    return new Promise<boolean>((resolve) => {
+      if (test(get())) return resolve(true);
+      const timer = setTimeout(() => {
+        off();
+        resolve(false);
+      }, timeoutMs);
+      const off = store.subscribe((state) => {
+        if (!test(state)) return;
+        clearTimeout(timer);
+        off();
+        resolve(true);
+      });
+    });
+  }
+
   /**
    * Runs a keyboard write with the busy flag and error reporting. `device` writes, reads back and
    * returns whether the keyboard kept the values. Without a keyboard (demo) only `demo` runs.
    */
-  async function write(positions: number[], demo: () => void, device: (keyboard: Hero68) => Promise<boolean>) {
+  async function write(demo: () => void, device: (keyboard: Hero68) => Promise<boolean>) {
     const state = get();
-    if (!canWrite(state) || state.writing || !positions.length) return false;
+    if (!canWrite(state) || state.writing) return false;
     if (!state.keyboard) {
       demo();
       return true;
@@ -135,6 +182,7 @@ export const useDriver = create<DriverState>()((set, get) => {
   }
 
   async function attach(device: HIDDevice) {
+    reconnectingSince = 0;
     set({ status: "connecting", error: null, warning: null });
     try {
       const keyboard = await openKeyboard(device);
@@ -149,7 +197,9 @@ export const useDriver = create<DriverState>()((set, get) => {
           keyboard.transport.dispose();
           detach.forEach((off) => off());
           detach = [];
-          set({ keyboard: null, status: "idle", progress: null, warning: t("error.disconnected") });
+          // After a polling change the keyboard comes back on its own: keep showing it as connecting.
+          const expected = awaitingReconnect();
+          set({ keyboard: null, status: expected ? "connecting" : "idle", progress: null, warning: expected ? null : t("error.disconnected") });
         }),
       ];
       // Don't keep showing demo or backup data as if it came from this keyboard.
@@ -196,7 +246,7 @@ export const useDriver = create<DriverState>()((set, get) => {
     },
 
     async autoConnect() {
-      if (get().keyboard || get().status === "connecting") return;
+      if (get().keyboard || (get().status === "connecting" && !awaitingReconnect())) return;
       const device = await findGrantedKeyboard().catch(() => null);
       if (device) await attach(device);
     },
@@ -229,8 +279,8 @@ export const useDriver = create<DriverState>()((set, get) => {
     },
 
     async setActuation(positions, actuationUm) {
+      if (!positions.length) return false;
       return write(
-        positions,
         () => patchKeys(positions.map((pos) => [pos, { actuationUm }])),
         async (keyboard) => {
           const flags = new Map((await keyboard.getActuation(positions)).map((key) => [key.pos, key.globalFlag]));
@@ -245,8 +295,8 @@ export const useDriver = create<DriverState>()((set, get) => {
 
     async setRapidTrigger(positions, change) {
       const merge = (current: RapidTrigger): RapidTrigger => ({ ...current, ...change });
+      if (!positions.length) return false;
       return write(
-        positions,
         () =>
           patchKeys(
             positions.map((pos) => [pos, { rapidTrigger: merge(get().snapshot?.keys[pos]?.rapidTrigger ?? DEFAULT_RAPID_TRIGGER) }]),
@@ -268,6 +318,89 @@ export const useDriver = create<DriverState>()((set, get) => {
               );
             })
           );
+        },
+      );
+    },
+
+    async setDeadZones(positions, change) {
+      const merge = (current: DeadZone): DeadZone => ({ ...current, ...change });
+      if (!positions.length) return false;
+      return write(
+        () => patchKeys(positions.map((pos) => [pos, { deadZone: merge(get().snapshot?.keys[pos]?.deadZone ?? DEFAULT_DEAD_ZONE) }])),
+        async (keyboard) => {
+          const wanted = (await keyboard.getDeadZones(positions)).map((key) => ({ ...key, ...merge(key) }));
+          await keyboard.setDeadZones(wanted);
+          const stored = new Map((await keyboard.getDeadZones(positions)).map((key) => [key.pos, key]));
+          patchKeys([...stored.values()].map(({ pos, enabled, topUm, bottomUm }) => [pos, { deadZone: { enabled, topUm, bottomUm } }]));
+          const step = keyboard.precision.distance;
+          return (
+            wanted.length === positions.length &&
+            wanted.every((key) => {
+              const back = stored.get(key.pos);
+              return back?.enabled === key.enabled && back.topUm === snap(key.topUm, step) && back.bottomUm === snap(key.bottomUm, step);
+            })
+          );
+        },
+      );
+    },
+
+    async setKeymap(layer, keys) {
+      if (!keys.length) return false;
+      return write(
+        () => patchLayer(layer, keys.map(({ pos, code }) => [pos, code])),
+        async (keyboard) => {
+          await keyboard.setKeymap(layer, keys);
+          const stored = await keyboard.getKeymap(
+            layer,
+            keys.map((key) => key.pos),
+          );
+          patchLayer(layer, [...stored]);
+          return keys.every(({ pos, code }) => stored.get(pos) === code >>> 0);
+        },
+      );
+    },
+
+    async setSetting(key, on) {
+      return write(
+        () => patchSettings({ [key]: on }),
+        async (keyboard) => {
+          const io = {
+            winLock: [() => keyboard.setWinLock(on), () => keyboard.getWinLock()],
+            macMode: [() => keyboard.setMacMode(on), () => keyboard.getMacMode()],
+            keyCombo: [() => keyboard.setKeyCombo(on), () => keyboard.getKeyCombo()],
+            autoCalibrate: [() => keyboard.setAutoCalibrate(on), () => keyboard.getAutoCalibrate()],
+          } as const;
+          const [save, load] = io[key];
+          await save();
+          const stored = await load();
+          patchSettings({ [key]: stored });
+          return stored === on;
+        },
+      );
+    },
+
+    async setPolling(level) {
+      return write(
+        () => patchSettings({ pollingLevel: level }),
+        async (keyboard) => {
+          reconnectingSince = Date.now();
+          // The keyboard usually drops off before echoing the frame, so a missing reply is expected.
+          await keyboard.setPollingLevel(level).catch(() => undefined);
+          if (!(await waitFor((state) => state.keyboard !== keyboard, 2500))) {
+            // It stayed connected: read the level back directly.
+            reconnectingSince = 0;
+            const stored = await keyboard.getPollingLevel();
+            patchSettings({ pollingLevel: stored });
+            return stored === level;
+          }
+          // attach() reads the whole keyboard again once it's back.
+          const back = await waitFor((state) => state.keyboard !== null && state.status === "ready", RECONNECT_MS);
+          if (!back) {
+            reconnectingSince = 0;
+            if (!get().keyboard) set({ status: "idle", warning: t("error.disconnected") });
+            return false;
+          }
+          return get().snapshot?.settings.pollingLevel === level;
         },
       );
     },
