@@ -48,35 +48,47 @@
 
 E mais:
 
-- **Interface no estilo do Wootility**: teclado no topo e cartões de ajuste embaixo. Clique ou arraste sobre as teclas para selecionar várias, e os cartões mostram só os valores delas.
-- **Gráficos que simulam o curso da tecla** no Rapid Trigger e nas zonas mortas, para ver o efeito de um valor antes de aplicar.
-- **Toda gravação é conferida**: depois de aplicar, o app lê o teclado de novo e avisa se algo não ficou gravado.
+- **Teclado no topo, ajustes embaixo.** Clique, arraste ou use Shift + clique para selecionar teclas, clique duas vezes para pegar todas com o mesmo valor, e os cartões mostram só o que está selecionado.
+- **Nada vai para o teclado sem você mandar.** Mude várias coisas em várias páginas, veja o que está pendente na barra de baixo e grave tudo de uma vez (⌘/Ctrl + S), ou desfaça passo a passo (⌘/Ctrl + Z).
+- **Toda gravação é conferida**: depois de gravar, o app lê o teclado de novo e avisa se algo não ficou gravado.
+- **Veja o efeito antes de gravar**: diagrama do switch no ponto de atuação e gráficos que simulam um toque no Rapid Trigger e nas zonas mortas.
+- **Paleta de comandos** (⌘/Ctrl + K) para ir a qualquer página ou ação.
 - **Backup em JSON** da configuração inteira, que dá para abrir depois sem o teclado.
-- **Modo demonstração** para conhecer a interface sem teclado.
+- **Modo demonstração** para conhecer tudo sem teclado.
 - **Português e inglês**, além de um log dos pacotes HID para depuração.
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/images/rapid-trigger-pt.png" alt="Página do Rapid Trigger com o gráfico do curso da tecla" /></td>
-    <td width="50%" valign="top"><img src="docs/images/remap-pt.png" alt="Página de mapeamento escolhendo uma nova função para a tecla V" /></td>
+    <td width="50%" valign="top"><img src="docs/images/rapid-trigger-pt.png" alt="Página do Rapid Trigger com W, A, S e D selecionadas e a simulação de um toque" /></td>
+    <td width="50%" valign="top"><img src="docs/images/live-travel-pt.png" alt="Curso ao vivo da tecla W, com o gráfico dos últimos 4 segundos e o diagrama do switch" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Rapid Trigger com um toque simulado</sub></td>
+    <td align="center"><sub>Curso ao vivo: quanto a tecla desceu, enquanto você digita</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/lighting-pt.png" alt="Página de iluminação com cores por tecla e os ajustes das luzes principal e lateral" /></td>
+    <td width="50%" valign="top"><img src="docs/images/remap-pt.png" alt="Página de mapeamento escolhendo uma nova função para a tecla V" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Iluminação: efeitos, cores e cores por tecla</sub></td>
     <td align="center"><sub>Trocando a função de uma tecla pela biblioteca</sub></td>
   </tr>
 </table>
+
+<sub>Capturas feitas no modo demonstração.</sub>
 
 ## Como usar
 
 1. Abra **[b9rnardo.github.io/aula-hero68-webdriver](https://b9rnardo.github.io/aula-hero68-webdriver/)** no **Chrome ou no Edge**, num computador.
 2. Conecte o teclado pelo **cabo USB**.
-3. Clique em **Conectar teclado** e escolha **HERO 68 HE** na lista.
-4. Selecione as teclas, mude o valor e clique em **Aplicar**.
+3. Clique em **Conectar** e escolha **HERO 68 HE** na lista.
+4. Selecione as teclas, mude o valor e clique em **Gravar no teclado**, na barra de baixo.
 
 Nas próximas vezes, o driver reconecta sozinho a um teclado que você já autorizou.
 
 > [!TIP]
-> Baixe um backup antes (**Meus perfis → Baixar backup**) para ter registrado como estava a sua configuração.
+> Baixe um backup antes (**Visão geral → Backup**) para ter registrado como estava a sua configuração.
 
 <details>
 <summary><b>Problemas comuns</b></summary>
@@ -103,6 +115,7 @@ Cada tipo de gravação foi testado num teclado real antes de ser liberado: muda
 - [x] Gravar atuação, Rapid Trigger e zonas mortas
 - [x] Gravar ajustes gerais e mapeamento de teclas
 - [x] Gravar tipo de switch e iluminação
+- [ ] Calibração
 - [ ] Gravar perfis
 - [ ] Gravar teclas avançadas e macros
 
@@ -126,7 +139,7 @@ O WebHID só funciona em HTTPS ou em `localhost`.
 | `src/store/` | estado do app (Zustand) |
 | `src/i18n/` | textos em português e inglês |
 | `src/pages/`, `src/components/` | interface (React + Tailwind) |
-| `docs/` | análise do driver oficial e dados extraídos |
+| `docs/` | análise do driver oficial, dados extraídos e o design system |
 
 <details>
 <summary><b>Protocolo em resumo</b></summary>
@@ -139,13 +152,16 @@ O teclado (USB `372E:103E`) recebe a configuração na interface HID 2, report I
 
 Valores de vários bytes são big-endian. O comando de leitura é o de escrita com o bit mais alto ligado (`0x13` grava a atuação, `0x93` lê). O teclado ecoa cada gravação, e não existe comando separado para salvar.
 
-| Comando | O que grava |
+| Comando | Para que serve |
 |---|---|
 | `0x03` | mapeamento; o byte sub é a camada |
-| `0x04` | ajustes gerais, um byte cada |
+| `0x04` | ajustes gerais, um byte cada; luz principal (`0x01`) e luz lateral (`0x06`) |
+| `0x06` | cores por tecla |
 | `0x13` | ponto de atuação |
+| `0x15` | tipo de switch |
 | `0x16` | zonas mortas |
 | `0x19` | Rapid Trigger |
+| `0x98` | curso ao vivo (só leitura) |
 
 A análise completa, com cada frame validado, está em [`docs/analise.md`](docs/analise.md).
 

@@ -48,35 +48,47 @@
 
 And also:
 
-- **Wootility-style interface**: keyboard at the top, settings cards below. Click or drag across keys to select several, and the cards show just their values.
-- **Charts that simulate the key travel** for Rapid Trigger and dead zones, so you can see what a value does before applying it.
-- **Every write is checked**: after applying, the app reads the keyboard again and warns you if something didn't stick.
+- **Keyboard on top, settings below.** Click, drag or Shift + click to select keys, double-click to pick every key with the same value, and the cards show just what's selected.
+- **Changes wait until you write them.** Change several things across pages, see what's pending in the bar at the bottom and write it all at once (⌘/Ctrl + S), or undo step by step (⌘/Ctrl + Z).
+- **Every write is checked**: after writing, the app reads the keyboard again and warns you if something didn't stick.
+- **See what a value does** before writing it: a switch diagram for the actuation point and charts that simulate a key press for Rapid Trigger and dead zones.
+- **Command palette** (⌘/Ctrl + K) to jump to any page or action.
 - **JSON backup** of the whole configuration, which you can open later without the keyboard.
-- **Demo mode** to explore the interface without a keyboard.
+- **Demo mode** to explore everything without a keyboard.
 - **English and Brazilian Portuguese**, plus a HID packet log for debugging.
 
 <table>
   <tr>
-    <td width="50%" valign="top"><img src="docs/images/rapid-trigger-en.png" alt="Rapid Trigger page with the key travel chart" /></td>
-    <td width="50%" valign="top"><img src="docs/images/remap-en.png" alt="Remap page choosing a new function for the V key" /></td>
+    <td width="50%" valign="top"><img src="docs/images/rapid-trigger-en.png" alt="Rapid Trigger page with W, A, S and D selected and the key press simulation" /></td>
+    <td width="50%" valign="top"><img src="docs/images/live-travel-en.png" alt="Live travel of the W key, with the chart of the last 4 seconds and the switch diagram" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Rapid Trigger with a simulated key press</sub></td>
+    <td align="center"><sub>Live travel: how far the key is down, as you type</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/lighting-en.png" alt="Lighting page with per-key colors and the main and side light settings" /></td>
+    <td width="50%" valign="top"><img src="docs/images/remap-en.png" alt="Remap page choosing a new function for the V key" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Lighting: effects, colors and per-key colors</sub></td>
     <td align="center"><sub>Remapping a key from the function library</sub></td>
   </tr>
 </table>
+
+<sub>Screenshots taken in demo mode.</sub>
 
 ## Getting started
 
 1. Open **[b9rnardo.github.io/aula-hero68-webdriver](https://b9rnardo.github.io/aula-hero68-webdriver/)** in **Chrome or Edge** on a computer.
 2. Plug the keyboard in with the **USB cable**.
-3. Click **Connect keyboard** and pick **HERO 68 HE** from the list.
-4. Select keys, change a value and click **Apply**.
+3. Click **Connect** and pick **HERO 68 HE** from the list.
+4. Select keys, change a value and click **Write to keyboard** in the bar at the bottom.
 
 Next time, the driver reconnects on its own to a keyboard you already allowed.
 
 > [!TIP]
-> Download a backup first (**My profiles → Download backup**) so you have a record of your original settings.
+> Download a backup first (**Overview → Backup**) so you have a record of your original settings.
 
 <details>
 <summary><b>Troubleshooting</b></summary>
@@ -103,6 +115,7 @@ Each kind of write was tested on a real keyboard first: change a value, read eve
 - [x] Write actuation, Rapid Trigger and dead zones
 - [x] Write general settings and key remapping
 - [x] Write switch type and lighting
+- [ ] Calibration
 - [ ] Write profiles
 - [ ] Write advanced keys and macros
 
@@ -126,7 +139,7 @@ WebHID only works on HTTPS or `localhost`.
 | `src/store/` | app state (Zustand) |
 | `src/i18n/` | English and Portuguese strings |
 | `src/pages/`, `src/components/` | interface (React + Tailwind) |
-| `docs/` | analysis of the official driver and extracted data (in Portuguese) |
+| `docs/` | analysis of the official driver, extracted data and the design system (in Portuguese) |
 
 <details>
 <summary><b>Protocol at a glance</b></summary>
@@ -139,13 +152,16 @@ The keyboard (USB `372E:103E`) takes configuration on HID interface 2, report ID
 
 Multi-byte values are big-endian. Read commands are the write command with the high bit set (`0x13` writes actuation, `0x93` reads it). The keyboard echoes each write, and there is no separate save command.
 
-| Command | What it writes |
+| Command | What it does |
 |---|---|
 | `0x03` | keymap; the sub byte is the layer |
-| `0x04` | general settings, one byte each |
+| `0x04` | general settings, one byte each; main light (`0x01`) and side light (`0x06`) |
+| `0x06` | per-key colors |
 | `0x13` | actuation point |
+| `0x15` | switch type |
 | `0x16` | dead zones |
 | `0x19` | Rapid Trigger |
+| `0x98` | live travel (read only) |
 
 The full analysis, with every validated frame, is in [`docs/analise.md`](docs/analise.md) (Portuguese).
 
