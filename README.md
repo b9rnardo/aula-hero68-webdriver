@@ -1,74 +1,159 @@
-# HERO 68 HE — driver web
+<p align="center">
+  <a href="https://b9rnardo.github.io/aula-hero68-webdriver/"><img src="public/favicon.svg" width="88" alt="HERO 68 HE Web Driver logo" /></a>
+</p>
 
-Driver web não oficial para o teclado magnético **AULA HERO 68 HE (com fio)**. Roda no navegador via WebHID, sem instalar nada.
+<h1 align="center">HERO 68 HE Web Driver</h1>
 
-**Abrir o driver:** https://b9rnardo.github.io/aula-hero68-webdriver/ (Chrome ou Edge)
+<p align="center">
+  Unofficial web configurator for the <b>AULA HERO 68 HE</b> magnetic (Hall effect) keyboard.<br />
+  Runs in your browser over WebHID. Nothing to install.
+</p>
 
-> **Fase 2: gravação aos poucos.** Esta versão lê tudo do teclado e gera um backup em JSON. Por enquanto grava o **ponto de atuação**, o **Rapid Trigger**, as **zonas mortas**, os **ajustes gerais** e o **mapeamento**. Cada ajuste só passa a ser gravado depois de testado no teclado real (ver `docs/analise.md`, seção 5).
+<p align="center">
+  <a href="https://b9rnardo.github.io/aula-hero68-webdriver/"><b>Open the driver</b></a> ·
+  <a href="#features">Features</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#development">Development</a> ·
+  <a href="README.pt-BR.md">Leia em português 🇧🇷</a>
+</p>
 
-## O que já faz
+<p align="center">
+  <a href="https://b9rnardo.github.io/aula-hero68-webdriver/"><img src="https://img.shields.io/badge/live-b9rnardo.github.io-a78bfa?style=flat-square" alt="Live site" /></a>
+  <a href="https://github.com/b9rnardo/aula-hero68-webdriver/actions/workflows/deploy.yml"><img src="https://img.shields.io/github/actions/workflow/status/b9rnardo/aula-hero68-webdriver/deploy.yml?branch=master&style=flat-square&label=deploy" alt="Deploy status" /></a>
+  <img src="https://img.shields.io/badge/WebHID-Chrome%20%7C%20Edge-1b1030?style=flat-square" alt="WebHID: Chrome or Edge" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="License: GPL-3.0" /></a>
+</p>
 
-Interface inspirada no Wootility: barra de ícones, menu lateral por seção, teclado no topo da página e cartões de ajuste embaixo. Clique ou arraste sobre as teclas para selecionar várias; os cartões passam a mostrar só os valores delas.
+<p align="center">
+  <img src="docs/images/actuation-en.png" alt="Actuation point page with W, A, S and D selected" width="900" />
+</p>
 
-- Conecta pelo WebHID (Chrome ou Edge, em HTTPS ou localhost) e reconecta sozinho se o teclado já foi autorizado.
-- **Ajustes rápidos:** resumo de atuação, Rapid Trigger, iluminação, polling rate e identificação.
-- **Ponto de atuação, Rapid Trigger e zonas mortas:** valor de cada tecla, distribuição clicável e o curso do switch.
-- **Gravar a atuação:** escolha as teclas, ajuste o valor (de 0,10 mm até o curso do switch) e clique em Aplicar. O app relê o teclado para confirmar.
-- **Gravar o Rapid Trigger:** liga e desliga por tecla e ajusta a sensibilidade de pressionar e soltar (de 0,01 mm até o curso do switch), juntas ou separadas. Um gráfico simula a tecla com os valores escolhidos. O app relê o teclado para confirmar.
-- **Gravar as zonas mortas:** liga e desliga por tecla e ajusta as zonas superior e inferior (de 0 a 0,50 mm). Um gráfico mostra as partes do curso que a tecla ignora. O app relê o teclado para confirmar.
-- **Mapeamento:** as 3 camadas (principal, Fn, Fn2), teclas diferentes do padrão de fábrica e biblioteca de funções com busca. Para trocar, selecione as teclas, escolha a função e clique em Aplicar; "Restaurar padrão" volta ao de fábrica. O app relê o teclado para confirmar.
-- **Teclas avançadas:** DKS, MT, TGL, SOCD, MPT e END de cada camada.
-- **Iluminação:** efeito, cor, brilho e velocidade da luz principal e lateral, e as cores por tecla.
-- **Meus perfis:** perfis do teclado, baixar backup em JSON e abrir um backup salvo sem o teclado.
-- **Ajustes:** polling rate, trava Win, modo Mac, debounce e calibração adaptativa, todos graváveis; suspensão (só leitura), idioma e log dos pacotes HID. Ao trocar o polling, o teclado reconecta sozinho e o app o relê.
-- **Demonstração:** mostra a interface com valores de exemplo, sem teclado.
-- Português e inglês.
+## Features
 
-## Aviso
+| | Read | Write |
+|---|:---:|:---:|
+| **Actuation point** per key, from 0.10 mm to the full switch travel | ✅ | ✅ |
+| **Rapid Trigger** with separate press and release sensitivity, in 0.01 mm steps | ✅ | ✅ |
+| **Dead zones** at the top and bottom of the travel | ✅ | ✅ |
+| **Key remapping** on the main, Fn and Fn2 layers | ✅ | ✅ |
+| **Polling rate** from 125 to 8000 Hz | ✅ | ✅ |
+| **Win lock, Mac mode, debounce and adaptive calibration** | ✅ | ✅ |
+| **Lighting**: main light, side light and per-key colors | ✅ | planned |
+| **Profiles** | ✅ | planned |
+| **Advanced keys**: DKS, MT, TGL, SOCD, MPT and END | ✅ | planned |
+| **Sleep timer** | ✅ | – |
 
-Projeto independente, sem ligação com a AULA. Os nomes AULA e HERO 68 HE pertencem aos seus donos. O protocolo foi entendido analisando o driver web oficial.
+And also:
 
-O app grava configurações no teclado. Cada gravação foi testada num teclado real antes de ser liberada, mas use por sua conta e risco. Se algo der errado, segure **Fn + Espaço por 5 s** para restaurar o padrão de fábrica.
+- **Wootility-style interface**: keyboard at the top, settings cards below. Click or drag across keys to select several, and the cards show just their values.
+- **Charts that simulate the key travel** for Rapid Trigger and dead zones, so you can see what a value does before applying it.
+- **Every write is checked**: after applying, the app reads the keyboard again and warns you if something didn't stick.
+- **JSON backup** of the whole configuration, which you can open later without the keyboard.
+- **Demo mode** to explore the interface without a keyboard.
+- **English and Brazilian Portuguese**, plus a HID packet log for debugging.
 
-## Rodar
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/images/rapid-trigger-en.png" alt="Rapid Trigger page with the key travel chart" /></td>
+    <td width="50%" valign="top"><img src="docs/images/remap-en.png" alt="Remap page choosing a new function for the V key" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Rapid Trigger with a simulated key press</sub></td>
+    <td align="center"><sub>Remapping a key from the function library</sub></td>
+  </tr>
+</table>
+
+## Getting started
+
+1. Open **[b9rnardo.github.io/aula-hero68-webdriver](https://b9rnardo.github.io/aula-hero68-webdriver/)** in **Chrome or Edge** on a computer.
+2. Plug the keyboard in with the **USB cable**.
+3. Click **Connect keyboard** and pick **HERO 68 HE** from the list.
+4. Select keys, change a value and click **Apply**.
+
+Next time, the driver reconnects on its own to a keyboard you already allowed.
+
+> [!TIP]
+> Download a backup first (**My profiles → Download backup**) so you have a record of your original settings.
+
+<details>
+<summary><b>Troubleshooting</b></summary>
+
+- **The keyboard isn't in the list.** Use Chrome or Edge on desktop (Firefox, Safari and mobile browsers don't support WebHID), connect with the cable and close the official AULA driver if it's open in another tab.
+- **The keyboard disconnects when I change the polling rate.** That's expected: the keyboard restarts its USB connection to apply the new rate. The driver waits for it and reads it again.
+- **Linux: the keyboard shows up but won't connect.** Your user may need access to the HID device. Create `/etc/udev/rules.d/99-aula-hero68.rules` with the line below, then run `sudo udevadm control --reload-rules && sudo udevadm trigger` and plug the keyboard in again.
+
+  ```
+  SUBSYSTEM=="hidraw", ATTRS{idVendor}=="372e", ATTRS{idProduct}=="103e", MODE="0660", TAG+="uaccess"
+  ```
+
+</details>
+
+## Safety
+
+This is an independent project and isn't affiliated with AULA. The protocol was worked out by studying the official web driver.
+
+Each kind of write was tested on a real keyboard first: change a value, read everything back, check that only that value changed, then restore the original. Even so, **use it at your own risk**. If something goes wrong, hold **Fn + Space for 5 seconds** to restore the factory defaults.
+
+## Roadmap
+
+- [x] Read the full configuration and export a JSON backup
+- [x] Write actuation, Rapid Trigger and dead zones
+- [x] Write general settings and key remapping
+- [ ] Write lighting
+- [ ] Write profiles
+- [ ] Write advanced keys and macros
+
+## Development
+
+Built with React 19, TypeScript, Vite, Tailwind CSS 4, Zustand and Vitest.
 
 ```bash
 npm install
-npm run dev
+npm run dev      # http://localhost:5173
+npm test         # protocol and store tests
+npm run build    # static site in dist/
 ```
 
-Abra http://localhost:5173 no Chrome ou no Edge.
+WebHID only works on HTTPS or `localhost`.
 
-```bash
-npm test          # testes do protocolo
-npm run build     # gera dist/ (site estático)
-```
-
-## Estrutura
-
-| Pasta | Conteúdo |
+| Folder | Contents |
 |---|---|
-| `src/hid/` | protocolo (frames, checksum), transporte WebHID, API do teclado, leitura completa |
-| `src/data/` | layout das 68 teclas, keycodes, switches, efeitos de luz |
-| `src/store/` | estado do app (zustand) |
-| `src/i18n/` | textos em pt-BR e inglês |
+| `src/hid/` | protocol (frames, checksum), WebHID transport, keyboard API, full read |
+| `src/data/` | 68-key layout, keycodes, switches, lighting effects |
+| `src/store/` | app state (Zustand) |
+| `src/i18n/` | English and Portuguese strings |
 | `src/pages/`, `src/components/` | interface (React + Tailwind) |
-| `docs/` | análise do driver oficial e dados extraídos |
+| `docs/` | analysis of the official driver and extracted data (in Portuguese) |
 
-## Publicar
+<details>
+<summary><b>Protocol at a glance</b></summary>
 
-O `npm run build` gera um site estático em `dist/` com caminhos relativos. Serve em GitHub Pages, Vercel, Netlify ou Cloudflare Pages. Precisa de HTTPS, porque o WebHID não funciona em HTTP.
+The keyboard (USB `372E:103E`) takes configuration on HID interface 2, report ID 9. Every message is a 63-byte frame:
 
-Neste repositório, o workflow `.github/workflows/deploy.yml` roda os testes, gera o build e publica no GitHub Pages a cada push no `master`.
+```
+[command, sub, type, total, index, length, data × 56, checksum]
+```
 
-## Licença
+Multi-byte values are big-endian. Read commands are the write command with the high bit set (`0x13` writes actuation, `0x93` reads it). The keyboard echoes each write, and there is no separate save command.
 
-Copyright (C) 2026 b9rnardo. Distribuído sob a GNU General Public License v3.0 ou posterior (GPL-3.0-or-later). Veja [LICENSE](LICENSE).
+| Command | What it writes |
+|---|---|
+| `0x03` | keymap; the sub byte is the layer |
+| `0x04` | general settings, one byte each |
+| `0x13` | actuation point |
+| `0x16` | dead zones |
+| `0x19` | Rapid Trigger |
 
----
+The full analysis, with every validated frame, is in [`docs/analise.md`](docs/analise.md) (Portuguese).
 
-**English.** Unofficial web driver for the AULA HERO 68 HE (wired), running in the browser over WebHID (Chrome or Edge): https://b9rnardo.github.io/aula-hero68-webdriver/
+</details>
 
-It reads the full configuration, exports a JSON backup and writes the actuation point, Rapid Trigger, dead zones, general settings and key remapping, each one validated on a real keyboard first. Lighting, profiles and advanced keys are read-only for now. Interface in English and Brazilian Portuguese.
+### Deploying
 
-Not affiliated with AULA. It writes to the keyboard, so use it at your own risk; holding Fn + Space for 5 s restores the factory defaults. Licensed under GPL-3.0-or-later.
+`npm run build` creates a static site with relative paths, so it works on any static host with HTTPS. In this repository, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs the tests, builds and publishes to GitHub Pages on every push to `master`. To use it in a fork, set **Settings → Pages → Source** to **GitHub Actions**.
+
+## License
+
+Copyright (C) 2026 b9rnardo. Released under the [GNU General Public License v3.0 or later](LICENSE).
+
+AULA and HERO 68 HE are names of their respective owners.
