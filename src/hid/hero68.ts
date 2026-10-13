@@ -14,6 +14,7 @@ import {
   u32,
 } from "./protocol";
 import { HidTransport, type RequestOptions } from "./transport";
+import { LIGHT_MAX_BRIGHTNESS, LIGHT_MAX_SPEED, LIGHT_MODES, SIDE_LIGHT_MAX_BRIGHTNESS, SIDE_LIGHT_MODES } from "../data/lighting";
 
 export const VENDOR_ID = 0x372e;
 export const PRODUCT_ID = 0x103e;
@@ -62,6 +63,27 @@ export interface LightState {
   color: Rgb;
   brightness: number;
   speed: number;
+}
+
+export type LightZone = "main" | "side";
+
+/** What the keyboard keeps of a light: in rainbow it ignores the color sent and keeps the previous one. */
+export const sameLight = (a: LightState, b: LightState) =>
+  a.mode === b.mode &&
+  a.rainbow === b.rainbow &&
+  a.brightness === b.brightness &&
+  a.speed === b.speed &&
+  (a.rainbow || (a.color.r === b.color.r && a.color.g === b.color.g && a.color.b === b.color.b));
+
+/** A light record as the keyboard stores it: mode, mix (7 = rainbow, 0 = the color), r, g, b, brightness, speed. */
+const lightBytes = ({ mode, rainbow, color, brightness, speed }: LightState) => [mode, rainbow ? 7 : 0, color.r, color.g, color.b, brightness, speed];
+const isByte = (n: number) => Number.isInteger(n) && n >= 0 && n <= 0xff;
+const isRgb = ({ r, g, b }: Rgb) => isByte(r) && isByte(g) && isByte(b);
+
+function checkLight(light: LightState, modes: Record<number, unknown>, maxBrightness: number) {
+  const level = (n: number, max: number) => Number.isInteger(n) && n >= 0 && n <= max;
+  if (!(light.mode in modes) || !level(light.brightness, maxBrightness) || !level(light.speed, LIGHT_MAX_SPEED) || !isRgb(light.color))
+    throw new RangeError(`light out of range: ${JSON.stringify(light)}`);
 }
 
 /** µm per device unit. 10 ⇒ one unit is 0.01 mm. */
@@ -227,6 +249,22 @@ export class Hero68 {
 
   async getSideLight(): Promise<LightState> {
     return this.parseLight(await this.getConfig(Config.SIDE_LIGHT));
+  }
+
+  /** Main light, in the official `sync_light_mode` frame (`04 01 00 01 00 07` + record). The keyboard echoes it. */
+  async setLight(light: LightState): Promise<void> {
+    checkLight(light, LIGHT_MODES, LIGHT_MAX_BRIGHTNESS);
+    await this.request(Cmd.SET_CONFIG, { sub: Config.LIGHT, data: lightBytes(light) }, { timeoutMs: 500, retries: 1 });
+  }
+
+  /** Side light, same record. Like the official `sync_light_edge`, the length byte says 4 in rainbow. */
+  async setSideLight(light: LightState): Promise<void> {
+    checkLight(light, SIDE_LIGHT_MODES, SIDE_LIGHT_MAX_BRIGHTNESS);
+    await this.request(
+      Cmd.SET_CONFIG,
+      { sub: Config.SIDE_LIGHT, data: lightBytes(light), length: light.rainbow ? 4 : 7 },
+      { timeoutMs: 500, retries: 1 },
+    );
   }
 
   /** 0=1000 1=500 2=250 3=125 4=8000 5=4000 6=2000 Hz */
@@ -449,6 +487,19 @@ export class Hero68 {
         result.set(readU16(record, 0), { r: record[2], g: record[3], b: record[4] });
     }
     return result;
+  }
+
+  /**
+   * Per-key colors (official `sync_custom_light`): `pos u16, r, g, b`, 11 keys per frame. Unlike the other
+   * per-key writes the frames are numbered, byte 3 the count and byte 4 the index. Each one is echoed.
+   */
+  async setKeyColors(keys: { pos: number; color: Rgb }[]): Promise<void> {
+    for (const { color } of keys) if (!isRgb(color)) throw new RangeError(`color out of range: ${JSON.stringify(color)}`);
+    const groups = chunk(keys, 11);
+    for (const [index, group] of groups.entries()) {
+      const data = group.flatMap(({ pos, color }) => [...u16(pos), color.r, color.g, color.b]);
+      await this.request(Cmd.SET_KEY_COLORS, { data, total: groups.length, index }, { timeoutMs: 1000, retries: 1 });
+    }
   }
 
   // ── Live travel ───────────────────────────────────────────────────────

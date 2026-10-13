@@ -64,7 +64,7 @@ Vários modelos usam o mesmo VID/PID: HERO 68 AIR, MINI, NEO, WIN68HE Ultra, JIS
 |---|---|---|---|
 | `0x03` | perfil | mapear teclas | por tecla: `pos u16` + `keycode u32` (até 9 teclas por pacote). Macro: `pos u16, 0x03, modo, repetições, índice` |
 | `0x04` | `0x01` | iluminação principal | `modo, mix (7 = arco-íris, 0 = cor fixa), r, g, b, brilho, velocidade` |
-| `0x04` | `0x06` | luz lateral | mesmo formato |
+| `0x04` | `0x06` | luz lateral | mesmo formato; o byte 5 é 4 com arco-íris e 7 sem |
 | `0x04` | `0x11` | modo Mac | `0/1` |
 | `0x04` | `0x13` | tempo de suspensão | nível |
 | `0x04` | `0x15` | trava da tecla Win | `0/1` |
@@ -391,6 +391,21 @@ Leitura completa feita com o código do app (`readSnapshot`) por node-hid. O tec
 - Teste de ida e volta na tecla V (`59`): Jade King → Jade Pro (`1`) → Jade King. Só o tipo da V mudou, e voltou. A atuação, o Rapid Trigger e as zonas mortas das 68 teclas ficaram iguais, e a leitura em repouso da V (0 a 10 µm, sensor perto de 10020) não mudou com o tipo.
 - Ao escolher um switch, a tela do driver oficial traz a atuação para dentro do curso do novo modelo (`distance > sw.distance ? sw.distance : distance`) e grava o tipo antes da atuação. O app faz o mesmo no rascunho e grava o tipo primeiro. Com os modelos deste teclado, todos de 3,4 mm, isso nunca acontece.
 - O app só oferece os modelos que o próprio teclado informa.
+
+**Iluminação (`0x04 01`, `0x04 06` e `0x06`), validada**
+- **Luz principal:** `04 01 00 01 00 07 [modo, mix, r, g, b, brilho, velocidade]`, igual ao driver oficial. `mix` é 7 com arco-íris e 0 com cor fixa. O teclado ecoa o frame, e a leitura `0x84 01` devolve o mesmo registro.
+- **Luz lateral:** `04 06` com o mesmo registro. O driver oficial põe 4 no byte 5 quando o arco-íris está ligado e 7 nos outros casos, mas manda os 7 bytes sempre. Com 4, o brilho e a velocidade também foram aplicados. O app faz igual ao oficial.
+- **Arco-íris:** o teclado ignora a cor enviada e mantém a anterior. Gravando respiração com arco-íris e cor verde depois de um vermelho fixo, a releitura veio com a cor vermelha. O app não conta a cor como alterada quando o arco-íris está ligado.
+- **Cores por tecla:** `06 00 00 total índice len`, com `[pos u16, r, g, b]` por tecla, até 11 por frame. Ao contrário dos outros comandos, os frames são numerados: o byte 3 é o total e o byte 4 o índice. O teclado ecoa cada um. A leitura é a `0x86`, 11 teclas por pedido.
+- Antes do teste: luz principal Fixo, cor `25, 24, 25`, brilho 20/20, velocidade 4; luz lateral Fixo, cor `255, 245, 255`, brilho 2/4, velocidade 2; 60 teclas com cor `0, 0, 0` e 8 com `0, 0, 255`.
+- Teste de ida e volta, relendo depois de cada etapa:
+  - principal Fixo vermelho 10/2 (`04 01 00 01 00 07 01 00 ff 00 00 0a 02`), respiração com arco-íris 15/3 e Personalizado 20/0: a releitura bateu em todos, com a cor anterior mantida no arco-íris;
+  - lateral Fixo azul 4/1, fluxo com arco-íris 1/3 (byte 5 = 4) e fluxo com arco-íris 3/0 (byte 5 = 7): a releitura bateu em todos;
+  - cores de V e B (`06 00 00 01 00 0a 00 3b ff 00 00 00 3c 00 ff 00`) e de 12 teclas em 2 frames (`06 00 00 02 00 …`, `06 00 00 02 01 …`): só essas teclas mudaram;
+  - no fim, as duas luzes e as 68 cores voltaram aos valores de antes, em 7 frames de cores. A atuação e o Rapid Trigger não mudaram.
+- As cores por tecla aparecem só no efeito Personalizado (19), mas ficam gravadas nos outros.
+- Na tela oficial, o brilho fica desligado no efeito desligado, e a velocidade no desligado e no Personalizado. A cor não vale no desligado, no Personalizado e no Neon da luz principal. Escolher uma cor desliga o arco-íris. O app segue isso e também trava a velocidade no efeito Fixo.
+- No app, cada luz e as cores das teclas são relidas depois de gravar. As cores são gravadas antes do efeito, para o Personalizado já aparecer com elas.
 
 **Ainda não confirmado**
 1. Se a atuação, o Rapid Trigger, as zonas mortas e o mapeamento gravados continuam depois de desconectar o cabo. O driver oficial não manda comando de salvar, então devem continuar. O polling já continua depois da reconexão.

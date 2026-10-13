@@ -10,8 +10,8 @@ import {
   openKeyboard,
   requestKeyboard,
 } from "../hid/devices";
-import type { Hero68 } from "../hid/hero68";
-import { HERO68_HE_UUID } from "../hid/hero68";
+import type { Hero68, LightState, LightZone, Rgb } from "../hid/hero68";
+import { HERO68_HE_UUID, sameLight } from "../hid/hero68";
 import { Cmd, Travel } from "../hid/protocol";
 import {
   formatUuid,
@@ -88,6 +88,10 @@ interface DriverState {
   setRapidTrigger(positions: number[], change: Partial<RapidTrigger>): Promise<boolean>;
   /** Changes dead zone fields of the given keys; fields left out keep each key's current value. */
   setDeadZones(positions: number[], change: Partial<DeadZone>): Promise<boolean>;
+  /** Writes the main or side light and reads it back. */
+  setLight(zone: LightZone, light: LightState): Promise<boolean>;
+  /** Writes per-key colors and reads them back. */
+  setKeyColors(colors: Record<number, Rgb>): Promise<boolean>;
   /** Tells the keyboard which switch the given keys have and reads it back. */
   setSwitchType(positions: number[], type: number): Promise<boolean>;
   /** Sets the function of keys on one layer (0 base, 1 Fn, 2 Fn2) and reads them back. */
@@ -130,6 +134,10 @@ export const useDriver = create<DriverState>()((set, get, store) => {
           }
         : {},
     );
+  }
+
+  function patchLighting(zone: LightZone, light: LightState) {
+    set(({ snapshot }) => (snapshot ? { snapshot: { ...snapshot, lighting: { ...snapshot.lighting, [zone]: light } } } : {}));
   }
 
   function patchSettings(values: Partial<KeyboardSnapshot["settings"]>) {
@@ -323,6 +331,35 @@ export const useDriver = create<DriverState>()((set, get, store) => {
               );
             })
           );
+        },
+      );
+    },
+
+    async setLight(zone, light) {
+      return write(
+        () => patchLighting(zone, light),
+        async (keyboard) => {
+          await (zone === "main" ? keyboard.setLight(light) : keyboard.setSideLight(light));
+          const stored = await (zone === "main" ? keyboard.getLight() : keyboard.getSideLight());
+          patchLighting(zone, stored);
+          return sameLight(stored, light);
+        },
+      );
+    },
+
+    async setKeyColors(colors) {
+      const keys = Object.entries(colors).map(([pos, color]) => ({ pos: Number(pos), color }));
+      if (!keys.length) return false;
+      return write(
+        () => patchKeys(keys.map(({ pos, color }) => [pos, { color }])),
+        async (keyboard) => {
+          await keyboard.setKeyColors(keys);
+          const stored = await keyboard.getKeyColors(keys.map((key) => key.pos));
+          patchKeys([...stored].map(([pos, color]) => [pos, { color }]));
+          return keys.every(({ pos, color }) => {
+            const back = stored.get(pos);
+            return back?.r === color.r && back.g === color.g && back.b === color.b;
+          });
         },
       );
     },

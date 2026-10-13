@@ -41,7 +41,7 @@
 | **Mapeamento de teclas** nas camadas principal, Fn e Fn2 | ✅ | ✅ |
 | **Polling rate** de 125 a 8000 Hz | ✅ | ✅ |
 | **Trava Win, modo Mac, debounce e calibração adaptativa** | ✅ | ✅ |
-| **Iluminação**: luz principal, luz lateral e cores por tecla | ✅ | em breve |
+| **Iluminação**: luz principal, luz lateral e cores por tecla | ✅ | ✅ |
 | **Perfis** | ✅ | em breve |
 | **Teclas avançadas**: DKS, MT, TGL, SOCD, MPT e END | ✅ | em breve |
 | **Tempo de suspensão** | ✅ | – |
@@ -102,7 +102,7 @@ Cada tipo de gravação foi testado num teclado real antes de ser liberado: muda
 - [x] Ler a configuração completa e exportar backup em JSON
 - [x] Gravar atuação, Rapid Trigger e zonas mortas
 - [x] Gravar ajustes gerais e mapeamento de teclas
-- [ ] Gravar iluminação
+- [x] Gravar tipo de switch e iluminação
 - [ ] Gravar perfis
 - [ ] Gravar teclas avançadas e macros
 

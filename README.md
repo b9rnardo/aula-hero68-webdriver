@@ -41,7 +41,7 @@
 | **Key remapping** on the main, Fn and Fn2 layers | ✅ | ✅ |
 | **Polling rate** from 125 to 8000 Hz | ✅ | ✅ |
 | **Win lock, Mac mode, debounce and adaptive calibration** | ✅ | ✅ |
-| **Lighting**: main light, side light and per-key colors | ✅ | planned |
+| **Lighting**: main light, side light and per-key colors | ✅ | ✅ |
 | **Profiles** | ✅ | planned |
 | **Advanced keys**: DKS, MT, TGL, SOCD, MPT and END | ✅ | planned |
 | **Sleep timer** | ✅ | – |
@@ -102,7 +102,7 @@ Each kind of write was tested on a real keyboard first: change a value, read eve
 - [x] Read the full configuration and export a JSON backup
 - [x] Write actuation, Rapid Trigger and dead zones
 - [x] Write general settings and key remapping
-- [ ] Write lighting
+- [x] Write switch type and lighting
 - [ ] Write profiles
 - [ ] Write advanced keys and macros
 

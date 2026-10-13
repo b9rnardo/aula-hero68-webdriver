@@ -190,6 +190,9 @@ Cada página é registrada em `src/navigation.ts` (`page(id, icon, needsData, st
 | `Empty` / `SelectionEmpty` | estado vazio com ícone e título curto |
 | `ValueRows` | "Valores em uso": uma linha por valor, clique seleciona as teclas |
 | `MmCaption`, `MmField`, `MmSlider` + `useMm` | qualquer valor em milímetros |
+| `Select` | escolha única entre muitas opções (efeitos de luz). Para 2–7 opções curtas, use `Seg` |
+| `LevelSlider` | nível inteiro sem unidade (brilho, velocidade), com a marca do valor gravado |
+| `ColorField` | cor: seletor do sistema, código hex e cores rápidas. `value` nulo = cores misturadas |
 | `Kpi`, `Dl`, `Lnk`, `Kbd`, `Swatch` | número com rótulo, lista rótulo/valor, link para outra página, tecla de atalho, amostra de cor |
 
 Não crie variações locais (outro raio, outra borda, outro botão). Se faltar algo, crie o componente em `ui.tsx`, a classe em `index.css` e registre aqui.
@@ -214,7 +217,7 @@ Traço 24×24 em `icons.tsx`, `stroke-width` 1,75, pontas arredondadas. Tamanhos
 3. Adicione o tipo no `Draft`, em `normalize`, em `pendingOf` e um passo em `save()` com rótulo `save.step.<tipo>`.
 4. Até lá, a página fica `readOnly` com `ReadOnlyPill`.
 
-Continua **desligada** até haver validação no hardware: a calibração (0x94). Iluminação, perfis, teclas avançadas e macros seguem só leitura.
+Continua **desligada** até haver validação no hardware: a calibração (0x94). Perfis, teclas avançadas e macros seguem só leitura. A iluminação (luzes principal e lateral e cores por tecla) está liberada.
 
 O curso ao vivo (0x98) está liberado: ele só lê e não muda ajuste nenhum. Regras dele (`src/store/live.ts`): no máximo 9 teclas por pedido (28 fizeram o teclado reiniciar); o modo de medição começa por um botão e termina sozinho ao sair da aba, esconder a página, desconectar, reler ou gravar, sempre mandando a saída antes de qualquer gravação.
 

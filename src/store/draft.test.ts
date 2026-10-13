@@ -30,3 +30,48 @@ describe("draft: switch type", () => {
     expect(pendingOf(useDraft.getState().draft).total).toBe(0);
   });
 });
+
+describe("draft: lighting", () => {
+  beforeEach(() => {
+    useDriver.getState().startDemo();
+    useDraft.getState().discard();
+  });
+
+  it("drops a light change that matches the keyboard, and ignores the color in rainbow", () => {
+    const main = useDriver.getState().snapshot!.lighting.main!;
+    useDraft.getState().edit("light.main", (d) => void (d.light.main = { ...main, brightness: main.brightness - 1 }));
+    expect(pendingOf(useDraft.getState().draft)).toMatchObject({ light: 1, total: 1 });
+    useDraft.getState().edit("light.main", (d) => void (d.light.main = { ...main }));
+    expect(pendingOf(useDraft.getState().draft).total).toBe(0);
+
+    useDriver.setState(({ snapshot }) => ({ snapshot: { ...snapshot!, lighting: { ...snapshot!.lighting, main: { ...main, rainbow: true } } } }));
+    useDraft.getState().edit("light.main", (d) => void (d.light.main = { ...main, rainbow: true, color: { r: 1, g: 2, b: 3 } }));
+    expect(pendingOf(useDraft.getState().draft).total).toBe(0);
+  });
+
+  it("counts key colors per key and writes them before the effect that shows them", async () => {
+    const order: string[] = [];
+    const original = useDriver.getState();
+    const main = original.snapshot!.lighting.main!;
+    useDriver.setState({
+      setKeyColors: (colors) => (order.push("colors"), original.setKeyColors(colors)),
+      setLight: (zone, light) => (order.push(`light.${zone}`), original.setLight(zone, light)),
+    });
+    try {
+      useDraft.getState().edit("color", (d) => {
+        d.color[1] = { r: 0, g: 255, b: 0 };
+        d.color[2] = { r: 0, g: 255, b: 0 };
+      });
+      useDraft.getState().edit("light.main", (d) => void (d.light.main = { ...main, mode: 1 }));
+      expect(pendingOf(useDraft.getState().draft)).toMatchObject({ color: 2, light: 1, total: 3 });
+      await useDraft.getState().save();
+      expect(order).toEqual(["colors", "light.main"]);
+      const snapshot = useDriver.getState().snapshot!;
+      expect(snapshot.keys[2].color).toEqual({ r: 0, g: 255, b: 0 });
+      expect(snapshot.lighting.main).toMatchObject({ mode: 1 });
+      expect(pendingOf(useDraft.getState().draft).total).toBe(0);
+    } finally {
+      useDriver.setState({ setKeyColors: original.setKeyColors, setLight: original.setLight });
+    }
+  });
+});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Hero68, parseTravel, type TravelSample } from "../hero68";
-import { buildFrame, Cmd, Info, readU16, Travel, u16, u32 } from "../protocol";
+import { buildFrame, Cmd, Config, Info, readU16, Travel, u16, u32 } from "../protocol";
 import { HidTimeoutError, HidTransport } from "../transport";
 import { fakeDevice, header } from "./fake-device";
 
@@ -109,6 +109,35 @@ describe("Hero68", () => {
     expect(Array.from(sent[0].subarray(0, 6))).toEqual([Cmd.SET_SWITCH_TYPE, 0, 0, 1, 0, 54]);
     expect(Array.from(sent[0].subarray(6, 12))).toEqual([0, 1, 25, 0, 2, 0]);
     expect(Array.from(sent[1].subarray(0, 9))).toEqual([Cmd.SET_SWITCH_TYPE, 0, 0, 1, 0, 3, 0, 19, 0]);
+  });
+
+  it("writes the main and side light like the official driver", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_CONFIG ? header(req, req[5]) : null));
+    await keyboard.setLight({ mode: 1, rainbow: false, color: { r: 255, g: 0, b: 0 }, brightness: 10, speed: 2 });
+    expect(Array.from(sent[0].subarray(0, 13))).toEqual([Cmd.SET_CONFIG, Config.LIGHT, 0, 1, 0, 7, 1, 0, 255, 0, 0, 10, 2]);
+    // In rainbow the official side light frame says 4 bytes; the keyboard still takes brightness and speed.
+    await keyboard.setSideLight({ mode: 1, rainbow: true, color: { r: 9, g: 8, b: 7 }, brightness: 1, speed: 3 });
+    expect(Array.from(sent[1].subarray(0, 13))).toEqual([Cmd.SET_CONFIG, Config.SIDE_LIGHT, 0, 1, 0, 4, 1, 7, 9, 8, 7, 1, 3]);
+  });
+
+  it("refuses a light the keyboard doesn't have", async () => {
+    const { keyboard, sent } = keyboardWith(() => null);
+    const light = { mode: 1, rainbow: false, color: { r: 0, g: 0, b: 0 }, brightness: 4, speed: 4 };
+    await expect(keyboard.setLight({ ...light, mode: 20 })).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setLight({ ...light, brightness: 21 })).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setSideLight({ ...light, brightness: 5 })).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setSideLight({ ...light, mode: 6 })).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setLight({ ...light, speed: 5 })).rejects.toBeInstanceOf(RangeError);
+    await expect(keyboard.setKeyColors([{ pos: 1, color: { r: 256, g: 0, b: 0 } }])).rejects.toBeInstanceOf(RangeError);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("writes key colors in numbered frames of 11 keys", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.SET_KEY_COLORS ? header(req, req[5]) : null));
+    await keyboard.setKeyColors(Array.from({ length: 12 }, (_, i) => ({ pos: i + 1, color: { r: i, g: 2, b: 3 } })));
+    expect(sent).toHaveLength(2);
+    expect(Array.from(sent[0].subarray(0, 11))).toEqual([Cmd.SET_KEY_COLORS, 0, 0, 2, 0, 55, 0, 1, 0, 2, 3]);
+    expect(Array.from(sent[1].subarray(0, 11))).toEqual([Cmd.SET_KEY_COLORS, 0, 0, 2, 1, 5, 0, 12, 11, 2, 3]);
   });
 
   it("refuses a switch type that isn't one byte", async () => {

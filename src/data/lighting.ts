@@ -41,6 +41,20 @@ export const SIDE_LIGHT_MODES: Record<number, Localized> = {
 export const SIDE_LIGHT_MAX_BRIGHTNESS = 4;
 export const LIGHT_MAX_SPEED = 4;
 
+/** Quick colors, at full LED drive. Black turns a key's light off in the Custom effect. */
+export const LIGHT_PRESETS: { hex: string; name: Localized }[] = [
+  { hex: "#ffffff", name: L("Branco", "White") },
+  { hex: "#ff0000", name: L("Vermelho", "Red") },
+  { hex: "#ff5a00", name: L("Laranja", "Orange") },
+  { hex: "#ffd200", name: L("Amarelo", "Yellow") },
+  { hex: "#00ff3c", name: L("Verde", "Green") },
+  { hex: "#00e5ff", name: L("Ciano", "Cyan") },
+  { hex: "#0028ff", name: L("Azul", "Blue") },
+  { hex: "#8c3cff", name: L("Violeta", "Violet") },
+  { hex: "#ff1eb4", name: L("Rosa", "Pink") },
+  { hex: "#000000", name: L("Apagada", "Off") },
+];
+
 /** Polling level → Hz. */
 export const POLLING_HZ = [1000, 500, 250, 125, 8000, 4000, 2000];
 

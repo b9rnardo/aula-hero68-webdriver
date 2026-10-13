@@ -286,3 +286,66 @@ describe("driver store: switch type write", () => {
     expect(useDriver.getState().snapshot?.keys[59].switchType).toBe(25);
   });
 });
+
+/** Keyboard that keeps both lights (in rainbow it keeps the old color, like the firmware) and per-key colors. */
+function lightingKeyboard(lights: Map<number, number[]>, colors: Map<number, number[]>) {
+  const fake = fakeDevice((req) => {
+    const length = req[5];
+    if (req[0] === Cmd.GET_CONFIG && lights.has(req[1])) return [...header(req, 7), ...lights.get(req[1])!];
+    if (req[0] === Cmd.SET_CONFIG && lights.has(req[1])) {
+      const next = Array.from(req.subarray(6, 13));
+      const old = lights.get(req[1])!;
+      lights.set(req[1], next[1] === 7 ? [next[0], 7, old[2], old[3], old[4], next[5], next[6]] : next);
+      return [...header(req, length), ...req.subarray(6, 6 + length)];
+    }
+    if (req[0] === Cmd.GET_KEY_COLORS) {
+      const data: number[] = [];
+      for (let i = 0; i < length; i += 2) {
+        const pos = readU16(req, 6 + i);
+        data.push(...u16(pos), ...(colors.get(pos) ?? [0, 0, 0]));
+      }
+      return [...header(req, data.length), ...data];
+    }
+    if (req[0] === Cmd.SET_KEY_COLORS) {
+      for (let i = 0; i < length; i += 5) colors.set(readU16(req, 6 + i), Array.from(req.subarray(8 + i, 11 + i)));
+      return [...header(req, length), ...req.subarray(6, 6 + length)];
+    }
+    return null;
+  });
+  useDriver.setState({ keyboard: new Hero68(new HidTransport(fake.device)), source: "device", status: "ready", snapshot: demoSnapshot() });
+  return fake.sent;
+}
+
+describe("driver store: lighting writes", () => {
+  beforeEach(() => useDriver.setState({ keyboard: null, source: null, snapshot: null, error: null, writing: false }));
+
+  it("writes a light and keeps what the keyboard reads back", async () => {
+    const lights = new Map([[Config.LIGHT, [1, 0, 25, 24, 25, 20, 4]], [Config.SIDE_LIGHT, [3, 0, 255, 245, 255, 2, 2]]]);
+    lightingKeyboard(lights, new Map());
+    const red = { mode: 1, rainbow: false, color: { r: 255, g: 0, b: 0 }, brightness: 10, speed: 2 };
+    expect(await useDriver.getState().setLight("main", red)).toBe(true);
+    expect(useDriver.getState().snapshot?.lighting.main).toEqual(red);
+    // Rainbow: the color sent is ignored, and that still counts as written.
+    expect(await useDriver.getState().setLight("side", { mode: 1, rainbow: true, color: { r: 9, g: 9, b: 9 }, brightness: 1, speed: 3 })).toBe(true);
+    expect(useDriver.getState().snapshot?.lighting.side).toEqual({ mode: 1, rainbow: true, color: { r: 255, g: 245, b: 255 }, brightness: 1, speed: 3 });
+    expect(useDriver.getState().error).toBeNull();
+  });
+
+  it("writes key colors and reads them back", async () => {
+    const colors = new Map<number, number[]>();
+    const sent = lightingKeyboard(new Map(), colors);
+    expect(await useDriver.getState().setKeyColors({ 59: { r: 255, g: 0, b: 0 }, 60: { r: 0, g: 255, b: 0 } })).toBe(true);
+    expect([colors.get(59), colors.get(60)]).toEqual([[255, 0, 0], [0, 255, 0]]);
+    expect(sent.map((frame) => frame[0])).toEqual([Cmd.SET_KEY_COLORS, Cmd.GET_KEY_COLORS]);
+    expect(useDriver.getState().snapshot?.keys[60].color).toEqual({ r: 0, g: 255, b: 0 });
+  });
+
+  it("only changes the local copy in the demo", async () => {
+    useDriver.getState().startDemo();
+    const off = { mode: 0, rainbow: false, color: { r: 0, g: 0, b: 0 }, brightness: 0, speed: 0 };
+    expect(await useDriver.getState().setLight("side", off)).toBe(true);
+    expect(await useDriver.getState().setKeyColors({ 59: { r: 1, g: 2, b: 3 } })).toBe(true);
+    const { lighting, keys } = useDriver.getState().snapshot!;
+    expect([lighting.side, keys[59].color]).toEqual([off, { r: 1, g: 2, b: 3 }]);
+  });
+});

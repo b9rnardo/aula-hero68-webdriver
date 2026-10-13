@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { LAYER_COUNT } from "../hid/hero68";
+import { LAYER_COUNT, sameLight, type LightState, type LightZone, type Rgb } from "../hid/hero68";
 import type { KeyboardSnapshot, KeySnapshot } from "../hid/snapshot";
 import { translate, type MessageKey } from "../i18n/core";
 import { canWrite, useDriver, type ToggleSetting } from "./driver";
@@ -17,6 +17,9 @@ export interface Draft {
   dz: Record<number, DeadZone>;
   /** Switch type id per key. */
   sw: Record<number, number>;
+  /** Color per key (shown in the Custom effect). */
+  color: Record<number, Rgb>;
+  light: Partial<Record<LightZone, LightState>>;
   /** Key function per layer. */
   map: Record<number, number>[];
   set: DraftSettings;
@@ -41,7 +44,7 @@ const HISTORY_MAX = 60;
 /** Repeated edits of the same kind within this window share one undo step (dragging a slider, typing). */
 const MERGE_MS = 800;
 
-const emptyDraft = (): Draft => ({ act: {}, rt: {}, dz: {}, sw: {}, map: Array.from({ length: LAYER_COUNT }, () => ({})), set: {} });
+const emptyDraft = (): Draft => ({ act: {}, rt: {}, dz: {}, sw: {}, color: {}, light: {}, map: Array.from({ length: LAYER_COUNT }, () => ({})), set: {} });
 const clone = (draft: Draft): Draft => JSON.parse(JSON.stringify(draft)) as Draft;
 const sameRecord = <T extends object>(a: T | undefined, b: T | undefined) =>
   !!a && !!b && (Object.keys(a) as (keyof T)[]).every((key) => a[key] === b[key]);
@@ -53,6 +56,11 @@ function normalize(draft: Draft, snapshot: KeyboardSnapshot): Draft {
   for (const pos of Object.keys(next.rt).map(Number)) if (sameRecord(next.rt[pos], snapshot.keys[pos]?.rapidTrigger)) delete next.rt[pos];
   for (const pos of Object.keys(next.dz).map(Number)) if (sameRecord(next.dz[pos], snapshot.keys[pos]?.deadZone)) delete next.dz[pos];
   for (const pos of Object.keys(next.sw).map(Number)) if (next.sw[pos] === snapshot.keys[pos]?.switchType) delete next.sw[pos];
+  for (const pos of Object.keys(next.color).map(Number)) if (sameRecord(next.color[pos], snapshot.keys[pos]?.color)) delete next.color[pos];
+  for (const zone of Object.keys(next.light) as LightZone[]) {
+    const stored = snapshot.lighting[zone];
+    if (stored && sameLight(next.light[zone]!, stored)) delete next.light[zone];
+  }
   next.map.forEach((layer, index) => {
     for (const pos of Object.keys(layer).map(Number)) if (layer[pos] === snapshot.layers[index]?.[pos]) delete layer[pos];
   });
@@ -65,6 +73,9 @@ export interface Pending {
   rt: number;
   dz: number;
   sw: number;
+  color: number;
+  /** Lights changed: main, side. */
+  light: number;
   map: number;
   set: number;
   /** Distinct keys with any change. */
@@ -78,19 +89,23 @@ export function pendingOf(draft: Draft): Pending {
   const rt = Object.keys(draft.rt);
   const dz = Object.keys(draft.dz);
   const sw = Object.keys(draft.sw);
+  const color = Object.keys(draft.color);
+  const light = Object.keys(draft.light).length;
   const map = draft.map.map((layer) => Object.keys(layer));
   const set = Object.keys(draft.set).length;
   const mapCount = map.reduce((sum, layer) => sum + layer.length, 0);
-  const keys = new Set([...act, ...rt, ...dz, ...sw, ...map.flat()]).size;
+  const keys = new Set([...act, ...rt, ...dz, ...sw, ...color, ...map.flat()]).size;
   return {
     act: act.length,
     rt: rt.length,
     dz: dz.length,
     sw: sw.length,
+    color: color.length,
+    light,
     map: mapCount,
     set,
     keys,
-    total: act.length + rt.length + dz.length + sw.length + mapCount + set,
+    total: act.length + rt.length + dz.length + sw.length + color.length + light + mapCount + set,
     polling: "pollingLevel" in draft.set,
   };
 }
@@ -101,6 +116,8 @@ export const current = {
   rt: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.rt[pos] ?? snapshot.keys[pos]?.rapidTrigger,
   dz: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.dz[pos] ?? snapshot.keys[pos]?.deadZone,
   sw: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.sw[pos] ?? snapshot.keys[pos]?.switchType,
+  color: (draft: Draft, snapshot: KeyboardSnapshot, pos: number) => draft.color[pos] ?? snapshot.keys[pos]?.color,
+  light: (draft: Draft, snapshot: KeyboardSnapshot, zone: LightZone) => draft.light[zone] ?? snapshot.lighting[zone],
   fn: (draft: Draft, snapshot: KeyboardSnapshot, layer: number, pos: number) => draft.map[layer]?.[pos] ?? snapshot.layers[layer]?.[pos],
   setting: <K extends keyof DraftSettings>(draft: Draft, snapshot: KeyboardSnapshot, key: K) =>
     (key in draft.set ? draft.set[key] : snapshot.settings[key]) as KeyboardSnapshot["settings"][K],
@@ -207,6 +224,10 @@ export const useDraft = create<DraftState>()((set, get) => ({
             (layer) => useDriver.getState().setKeymap(layer.index, layer.keys),
           ),
       });
+    // Colors first: switching to the Custom effect then shows them right away.
+    if (pending.color) steps.push({ label: "save.step.keyColors", run: () => useDriver.getState().setKeyColors(draft.color) });
+    if (pending.light)
+      steps.push({ label: "save.step.light", run: () => every(Object.keys(draft.light) as LightZone[], (zone) => useDriver.getState().setLight(zone, draft.light[zone]!)) });
     const toggles = (Object.keys(draft.set) as (keyof DraftSettings)[]).filter((key): key is ToggleSetting => key !== "pollingLevel");
     if (toggles.length)
       steps.push({ label: "save.step.settings", run: () => every(toggles, (key) => useDriver.getState().setSetting(key, draft.set[key]!)) });
@@ -231,7 +252,7 @@ export const useDraft = create<DraftState>()((set, get) => ({
 
     const parts = [
       pending.keys > 0 && plural(pending.keys, "save.keysOne", "save.keysMany"),
-      pending.set > 0 && plural(pending.set, "save.settingsOne", "save.settingsMany"),
+      pending.set + pending.light > 0 && plural(pending.set + pending.light, "save.settingsOne", "save.settingsMany"),
     ].filter(Boolean);
     set({ saving: null, history: [] });
     get().showToast({ tone: "ok", text: t(demo ? "save.doneDemo" : "save.done", { what: parts.join(t("save.and")) }) });

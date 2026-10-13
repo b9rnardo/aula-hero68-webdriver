@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { POLLING_HZ } from "../data/lighting";
 import { isWebHidSupported } from "../hid/devices";
+import type { LightZone } from "../hid/hero68";
 import { useI18n, type MessageKey } from "../i18n";
 import { downloadBackup, pickBackup } from "../lib/backup";
 import { isTyping, MOD, useMedia } from "../lib/media";
@@ -22,7 +23,7 @@ const usePending = () => {
 
 /** Unsaved changes per sidebar page. */
 const countFor = (id: PageId, pending: Pending) =>
-  ({ actuation: pending.act, rapidTrigger: pending.rt, deadZone: pending.dz, switch: pending.sw, remap: pending.map, settings: pending.set })[id as string] ?? 0;
+  ({ actuation: pending.act, rapidTrigger: pending.rt, deadZone: pending.dz, switch: pending.sw, lighting: pending.light + pending.color, remap: pending.map, settings: pending.set })[id as string] ?? 0;
 
 function useStatus(): { text: string; led: string } {
   const { t } = useI18n();
@@ -227,6 +228,7 @@ function Banners() {
 function PendingBar() {
   const { t } = useI18n();
   const pending = usePending();
+  const lights = useDraft(useShallow((s) => Object.keys(s.draft.light) as LightZone[]));
   const { saving, history, save, undo, discard } = useDraft(
     useShallow((s) => ({ saving: s.saving, history: s.history.length, save: s.save, undo: s.undo, discard: s.discard })),
   );
@@ -240,6 +242,8 @@ function PendingBar() {
         pending.rt && t("bar.rt", { keys: keys(pending.rt) }),
         pending.dz && t("bar.dz", { keys: keys(pending.dz) }),
         pending.sw && t("bar.sw", { keys: keys(pending.sw) }),
+        pending.color && t("bar.color", { keys: keys(pending.color) }),
+        lights.map((zone) => t(`light.${zone}`)).join(t("save.and")),
         pending.map && t("bar.map", { keys: keys(pending.map) }),
         pending.set && `${t(pending.set === 1 ? "bar.setOne" : "bar.setMany", { n: pending.set })}${pending.polling ? ` ${t("bar.reconnect")}` : ""}`,
       ]

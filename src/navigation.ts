@@ -49,7 +49,7 @@ export const PAGES: Record<PageId, PageDef> = {
   switch: page("switch", "switch", true, true),
   remap: page("remap", "remap", true, true),
   advanced: page("advanced", "advanced", true, true, true),
-  lighting: page("lighting", "lighting", true, true, true),
+  lighting: page("lighting", "lighting", true, true),
   settings: page("settings", "settings", true, false),
   interface: page("interface", "interface", false, false),
   diagnostics: page("diagnostics", "diagnostics", false, false),

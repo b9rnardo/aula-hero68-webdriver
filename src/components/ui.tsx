@@ -1,4 +1,4 @@
-import { useId, useRef, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { useI18n } from "../i18n";
 import { LETTERS, WASD } from "../lib/selection";
 import { useUi } from "../store/ui";
@@ -329,5 +329,155 @@ export function Lnk({ children, onClick }: { children: ReactNode; onClick: () =>
       {children}
       <Icon name="arrow" size="xs" />
     </button>
+  );
+}
+
+/** Single choice among many options (light effects): the native list with the field look. */
+export function Select<T extends string | number>({
+  value,
+  onChange,
+  options,
+  label,
+  disabled,
+  className,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: string }[];
+  label: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <span className={cx("select", className)}>
+      <select
+        value={String(value)}
+        aria-label={label}
+        disabled={disabled}
+        onChange={(event) => {
+          const option = options.find((o) => String(o.value) === event.target.value);
+          if (option) onChange(option.value);
+        }}
+      >
+        {options.map((option) => (
+          <option key={String(option.value)} value={String(option.value)}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <Icon name="chevron" size="s" />
+    </span>
+  );
+}
+
+/** Slider for a whole-number level (brightness, speed): the value next to the label and a tick on the keyboard value. */
+export function LevelSlider({
+  label,
+  value,
+  max,
+  saved,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  /** Value on the keyboard; marked when the draft differs. */
+  saved?: number;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
+  const { t } = useI18n();
+  const pct = (n: number) => (Math.min(n, max) / max) * 100;
+  return (
+    <div>
+      <div className="mb-2 flex justify-between">
+        <span className="lab">{label}</span>
+        <span className="font-mono text-accent-light tabular-nums">
+          {value}/{max}
+        </span>
+      </div>
+      <div className="slider">
+        <div className="tr" />
+        <div className="fi" style={{ width: `${pct(value)}%` }} />
+        {saved !== undefined && saved !== value && <div className="tk" style={{ left: `${pct(saved)}%` }} title={t("mm.tick")} />}
+        <input
+          className="range"
+          type="range"
+          min={0}
+          max={max}
+          step={1}
+          value={value}
+          disabled={disabled}
+          aria-label={label}
+          aria-valuetext={`${value}/${max}`}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+      </div>
+    </div>
+  );
+}
+
+const HEX = /^#?([0-9a-f]{6})$/i;
+
+/** Color picker: the system picker behind a swatch, the hex code and quick colors. `value` null = mixed. */
+export function ColorField({
+  value,
+  onChange,
+  label,
+  presets,
+  disabled,
+}: {
+  value: string | null;
+  onChange: (hex: string) => void;
+  label: string;
+  presets: { hex: string; name: string }[];
+  disabled?: boolean;
+}) {
+  const { t } = useI18n();
+  // While typing, the field keeps its own text and only valid codes reach the draft.
+  const [text, setText] = useState<string | null>(null);
+  const code = value ? value.toUpperCase() : "";
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <label className={cx("cswatch", !value && "mixed")} style={value ? { background: value } : undefined}>
+          <input type="color" value={value ?? "#000000"} disabled={disabled} aria-label={label} onChange={(event) => onChange(event.target.value)} />
+        </label>
+        <label className="field">
+          <span className="sr-only">{t("color.hex", { label })}</span>
+          <input
+            className="w-[76px] text-left font-mono"
+            value={text ?? code}
+            placeholder={t("common.mixed")}
+            spellCheck={false}
+            maxLength={7}
+            disabled={disabled}
+            onFocus={() => setText(code)}
+            onBlur={() => setText(null)}
+            onChange={(event) => {
+              setText(event.target.value);
+              const match = HEX.exec(event.target.value.trim());
+              if (match) onChange(`#${match[1].toLowerCase()}`);
+            }}
+          />
+        </label>
+      </div>
+      <div className="cpres" role="group" aria-label={t("color.quick")}>
+        {presets.map((preset) => (
+          <button
+            key={preset.hex}
+            type="button"
+            className={cx("cpre", value === preset.hex && "on")}
+            style={{ background: preset.hex }}
+            title={preset.name}
+            aria-label={preset.name}
+            aria-pressed={value === preset.hex}
+            disabled={disabled}
+            onClick={() => onChange(preset.hex)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
