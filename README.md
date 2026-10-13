@@ -2,6 +2,8 @@
 
 Driver web não oficial para o teclado magnético **AULA HERO 68 HE (com fio)**. Roda no navegador via WebHID, sem instalar nada.
 
+**Abrir o driver:** https://b9rnardo.github.io/aula-hero68-webdriver/ (Chrome ou Edge)
+
 > **Fase 2: gravação aos poucos.** Esta versão lê tudo do teclado e gera um backup em JSON. Por enquanto grava o **ponto de atuação**, o **Rapid Trigger**, as **zonas mortas**, os **ajustes gerais** e o **mapeamento**. Cada ajuste só passa a ser gravado depois de testado no teclado real (ver `docs/analise.md`, seção 5).
 
 ## O que já faz
@@ -21,6 +23,12 @@ Interface inspirada no Wootility: barra de ícones, menu lateral por seção, te
 - **Ajustes:** polling rate, trava Win, modo Mac, debounce e calibração adaptativa, todos graváveis; suspensão (só leitura), idioma e log dos pacotes HID. Ao trocar o polling, o teclado reconecta sozinho e o app o relê.
 - **Demonstração:** mostra a interface com valores de exemplo, sem teclado.
 - Português e inglês.
+
+## Aviso
+
+Projeto independente, sem ligação com a AULA. Os nomes AULA e HERO 68 HE pertencem aos seus donos. O protocolo foi entendido analisando o driver web oficial.
+
+O app grava configurações no teclado. Cada gravação foi testada num teclado real antes de ser liberada, mas use por sua conta e risco. Se algo der errado, segure **Fn + Espaço por 5 s** para restaurar o padrão de fábrica.
 
 ## Rodar
 
@@ -51,6 +59,16 @@ npm run build     # gera dist/ (site estático)
 
 O `npm run build` gera um site estático em `dist/` com caminhos relativos. Serve em GitHub Pages, Vercel, Netlify ou Cloudflare Pages. Precisa de HTTPS, porque o WebHID não funciona em HTTP.
 
+Neste repositório, o workflow `.github/workflows/deploy.yml` roda os testes, gera o build e publica no GitHub Pages a cada push no `master`.
+
+## Licença
+
+Copyright (C) 2026 b9rnardo. Distribuído sob a GNU General Public License v3.0 ou posterior (GPL-3.0-or-later). Veja [LICENSE](LICENSE).
+
 ---
 
-Unofficial web driver for the AULA HERO 68 HE (wired). Read-only for now: it reads the full configuration over WebHID and exports a JSON backup. Chrome or Edge required. Not affiliated with AULA.
+**English.** Unofficial web driver for the AULA HERO 68 HE (wired), running in the browser over WebHID (Chrome or Edge): https://b9rnardo.github.io/aula-hero68-webdriver/
+
+It reads the full configuration, exports a JSON backup and writes the actuation point, Rapid Trigger, dead zones, general settings and key remapping, each one validated on a real keyboard first. Lighting, profiles and advanced keys are read-only for now. Interface in English and Brazilian Portuguese.
+
+Not affiliated with AULA. It writes to the keyboard, so use it at your own risk; holding Fn + Space for 5 s restores the factory defaults. Licensed under GPL-3.0-or-later.
