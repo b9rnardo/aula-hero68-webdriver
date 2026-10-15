@@ -1,6 +1,7 @@
 import {
   bitIndexes,
   buildFrame,
+  Calibration,
   chunk,
   Cmd,
   Config,
@@ -13,7 +14,7 @@ import {
   u16,
   u32,
 } from "./protocol";
-import { HidTransport, type RequestOptions } from "./transport";
+import { HidTimeoutError, HidTransport, type RequestOptions } from "./transport";
 import { LIGHT_MAX_BRIGHTNESS, LIGHT_MAX_SPEED, LIGHT_MODES, SIDE_LIGHT_MAX_BRIGHTNESS, SIDE_LIGHT_MODES } from "../data/lighting";
 
 export const VENDOR_ID = 0x372e;
@@ -50,6 +51,8 @@ export const RAPID_TRIGGER_MAX_UM = 4000;
 export const DEAD_ZONE_MAX_UM = 500;
 /** Keys per live travel request. 9 work; a request with 28 made the keyboard reset. */
 export const TRAVEL_MAX_KEYS = 9;
+/** Keys per calibration range request, as in the official driver. */
+export const CALIBRATION_MAX_KEYS = 9;
 
 export interface Rgb {
   r: number;
@@ -128,6 +131,24 @@ export interface TravelSample {
   pressed: boolean;
 }
 
+/** Raw Hall readings at the two ends of a key's travel, as calibrated. */
+export interface CalibrationRange {
+  pos: number;
+  max: number;
+  min: number;
+}
+
+/** One key in a calibration progress frame. */
+export interface CalibrationProgress {
+  pos: number;
+  /** Raw Hall reading now; it goes down as the key goes down. */
+  reading: number;
+  /** Lowest reading since calibration started. */
+  min: number;
+  /** The key went to the bottom and came back up: the keyboard took its new range. */
+  finished: boolean;
+}
+
 export type AdvancedKey =
   | { type: "TGL"; pos: number; key: number; delayMs: number }
   | { type: "MT"; pos: number; hold: number; tap: number; delayMs: number }
@@ -162,7 +183,22 @@ export function parseTravel(frame: Uint8Array, step: number): TravelSample[] | n
   });
 }
 
+/**
+ * Keys in a calibration progress frame (`94 02`): 6 bytes each, `pos, reading, lowest reading`.
+ * Bit 15 of the reading is set while the key is calibrating; it is clear in the one frame sent when the
+ * key comes back up after reaching the bottom, which is when the keyboard takes its new range.
+ * Returns null for any other frame.
+ */
+export function parseCalibration(frame: Uint8Array): CalibrationProgress[] | null {
+  if (frame[0] !== Cmd.CALIBRATION || frame[1] !== Calibration.PROGRESS) return null;
+  return records(frameData(frame), 6, CALIBRATION_MAX_KEYS).map((record) => {
+    const reading = readU16(record, 2);
+    return { pos: readU16(record, 0), reading: reading & 0x7fff, min: readU16(record, 4), finished: (reading & 0x8000) === 0 };
+  });
+}
+
 const travelReply = (sub: number) => (frame: Uint8Array) => frame[0] === Cmd.TRAVEL_STREAM && frame[1] === sub;
+const calibrationReply = (sub: number) => (frame: Uint8Array) => frame[0] === Cmd.CALIBRATION && frame[1] === sub;
 
 /** High-level API for the HERO 68 HE ("kb_by_v3_wired" protocol). Reads everything; writes are added one setting at a time. */
 export class Hero68 {
@@ -526,6 +562,58 @@ export class Hero68 {
       const samples = parseTravel(frame, this.precision.rt || 10);
       if (samples) listener(samples);
     });
+  }
+
+  // ── Calibration ───────────────────────────────────────────────────────
+  // Tested on the keyboard: start, each keep-alive and stop are echoed. While calibrating, every key that
+  // went down is reported about every 50 ms. On stop the keyboard keeps the new range of the keys that
+  // finished; the other keys and every setting stay as they were. There is no way to cancel or restore.
+
+  async startCalibration(): Promise<void> {
+    await this.request(Cmd.CALIBRATION, { sub: Calibration.START }, { match: calibrationReply(Calibration.START), timeoutMs: 500, retries: 2 });
+  }
+
+  /** The official driver sends the start again every second while calibrating. */
+  async keepCalibrating(): Promise<void> {
+    await this.request(Cmd.CALIBRATION, { sub: Calibration.START }, { match: calibrationReply(Calibration.START), timeoutMs: 300, retries: 0 });
+  }
+
+  /** Like the official driver: the stop goes out 3 times, 100 ms apart. One echo is enough. */
+  async stopCalibration(): Promise<void> {
+    let echoed = false;
+    for (let i = 0; i < 3; i++) {
+      if (i) await new Promise((resolve) => setTimeout(resolve, 100));
+      try {
+        await this.request(Cmd.CALIBRATION, { sub: Calibration.STOP }, { match: calibrationReply(Calibration.STOP), timeoutMs: 1000, retries: 0 });
+        echoed = true;
+      } catch (error) {
+        if (!(error instanceof HidTimeoutError)) throw error;
+      }
+    }
+    if (!echoed) throw new HidTimeoutError(Cmd.CALIBRATION);
+  }
+
+  /** Progress frames while calibrating. Returns an unsubscribe function. */
+  onCalibration(listener: (keys: CalibrationProgress[]) => void): () => void {
+    return this.transport.subscribe((frame) => {
+      const keys = parseCalibration(frame);
+      if (keys) listener(keys);
+    });
+  }
+
+  /** Sensor range of each key (`94 05`), 9 keys per request: `pos, max, min`, both raw Hall readings. */
+  async getCalibrationRanges(positions: number[]): Promise<CalibrationRange[]> {
+    const result: CalibrationRange[] = [];
+    for (const group of chunk(positions, CALIBRATION_MAX_KEYS)) {
+      const reply = await this.request(
+        Cmd.CALIBRATION,
+        { sub: Calibration.RANGE, data: posBytes(group) },
+        { match: calibrationReply(Calibration.RANGE), timeoutMs: 400, retries: 3 },
+      );
+      for (const record of records(frameData(reply), 6, group.length))
+        result.push({ pos: readU16(record, 0), max: readU16(record, 2), min: readU16(record, 4) });
+    }
+    return result;
   }
 
   // ── Advanced keys ─────────────────────────────────────────────────────

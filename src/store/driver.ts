@@ -12,7 +12,7 @@ import {
 } from "../hid/devices";
 import type { Hero68, LightState, LightZone, Rgb } from "../hid/hero68";
 import { HERO68_HE_UUID, sameLight } from "../hid/hero68";
-import { Cmd, Travel } from "../hid/protocol";
+import { Calibration, Cmd, Travel } from "../hid/protocol";
 import {
   formatUuid,
   readSnapshot,
@@ -200,8 +200,9 @@ export const useDriver = create<DriverState>()((set, get, store) => {
       detach.forEach((off) => off());
       detach = [
         keyboard.transport.onPacket((direction, bytes) => {
-          // Live travel sends 20+ frames a second; they would push everything else out of the log.
+          // Live travel and calibration send 20+ frames a second; they would push everything else out of the log.
           if (bytes[0] === Cmd.TRAVEL_STREAM && bytes[1] === Travel.KEYS) return;
+          if (bytes[0] === Cmd.CALIBRATION && bytes[1] === Calibration.PROGRESS) return;
           set((state) => ({
             packets: [...state.packets.slice(-(MAX_PACKETS - 1)), { id: ++packetId, at: Date.now(), direction, bytes }],
           }));

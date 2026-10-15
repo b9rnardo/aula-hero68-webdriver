@@ -37,7 +37,7 @@
 | **Dead zones** at the top and bottom of the travel | ✅ | ✅ |
 | **Switch type** per key, from the models the keyboard accepts | ✅ | ✅ |
 | **Live travel**: how far each key is down, about 20 times a second | ✅ | – |
-| **Calibration** | – | planned |
+| **Calibration**: press each key all the way down and the keyboard learns its new top and bottom | ✅ | ✅ |
 | **Key remapping** on the main, Fn and Fn2 layers | ✅ | ✅ |
 | **Polling rate** from 125 to 8000 Hz | ✅ | ✅ |
 | **Win lock, Mac mode, debounce and adaptive calibration** | ✅ | ✅ |
@@ -107,7 +107,7 @@ Next time, the driver reconnects on its own to a keyboard you already allowed.
 
 This is an independent project and isn't affiliated with AULA. The protocol was worked out by studying the official web driver.
 
-Each kind of write was tested on a real keyboard first: change a value, read everything back, check that only that value changed, then restore the original. Even so, **use it at your own risk**. If something goes wrong, hold **Fn + Space for 5 seconds** to restore the factory defaults.
+Each kind of write was tested on a real keyboard first: change a value, read everything back, check that only that value changed, then restore the original. Calibration is the exception, since it can't be undone, only redone: it only changes the keys you press. Even so, **use it at your own risk**. If something goes wrong, hold **Fn + Space for 5 seconds** to restore the factory defaults.
 
 ## Roadmap
 
@@ -115,7 +115,7 @@ Each kind of write was tested on a real keyboard first: change a value, read eve
 - [x] Write actuation, Rapid Trigger and dead zones
 - [x] Write general settings and key remapping
 - [x] Write switch type and lighting
-- [ ] Calibration
+- [x] Calibration
 - [ ] Write profiles
 - [ ] Write advanced keys and macros
 
@@ -161,6 +161,7 @@ Multi-byte values are big-endian. Read commands are the write command with the h
 | `0x15` | switch type |
 | `0x16` | dead zones |
 | `0x19` | Rapid Trigger |
+| `0x94` | calibration: start, stop and each key's range |
 | `0x98` | live travel (read only) |
 
 The full analysis, with every validated frame, is in [`docs/analise.md`](docs/analise.md) (Portuguese).

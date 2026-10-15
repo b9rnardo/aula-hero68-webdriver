@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Hero68, parseTravel, type TravelSample } from "../hero68";
-import { buildFrame, Cmd, Config, Info, readU16, Travel, u16, u32 } from "../protocol";
+import { Hero68, parseCalibration, parseTravel, type TravelSample } from "../hero68";
+import { buildFrame, Calibration, Cmd, Config, Info, readU16, Travel, u16, u32 } from "../protocol";
 import { HidTimeoutError, HidTransport } from "../transport";
 import { fakeDevice, header } from "./fake-device";
 
@@ -234,6 +234,54 @@ describe("Hero68", () => {
     const { keyboard, sent } = keyboardWith(() => null);
     await expect(keyboard.requestTravel(Array.from({ length: 10 }, (_, i) => i + 1))).rejects.toBeInstanceOf(RangeError);
     expect(sent).toHaveLength(0);
+  });
+
+  it("reads calibration ranges 9 keys per request", async () => {
+    const { keyboard, sent } = keyboardWith((req) => {
+      if (req[0] !== Cmd.CALIBRATION || req[1] !== Calibration.RANGE) return null;
+      const data: number[] = [];
+      for (let i = 0; i < req[5] / 2; i++) {
+        const pos = readU16(req, 6 + i * 2);
+        data.push(...u16(pos), ...u16(9000 + pos), ...u16(900 + pos));
+      }
+      return [...header(req, data.length), ...data];
+    });
+    const positions = Array.from({ length: 10 }, (_, i) => i + 15);
+    const ranges = await keyboard.getCalibrationRanges(positions);
+    expect(sent.map((frame) => frame[5])).toEqual([18, 2]);
+    expect(ranges).toHaveLength(10);
+    expect(ranges[0]).toEqual({ pos: 15, max: 9015, min: 915 });
+  });
+
+  it("parses calibration progress: bit 15 of the reading clear means the key finished", () => {
+    // Recorded on the keyboard: Z at the bottom, then the frame sent when it came back up.
+    const down = buildFrame(Cmd.CALIBRATION, { sub: Calibration.PROGRESS, data: [0x00, 0x38, 0x85, 0xe4, 0x05, 0xe4] });
+    expect(parseCalibration(down)).toEqual([{ pos: 56, reading: 1508, min: 1508, finished: false }]);
+    const up = buildFrame(Cmd.CALIBRATION, { sub: Calibration.PROGRESS, data: [...u16(56), ...u16(9638), ...u16(1457)] });
+    expect(parseCalibration(up)).toEqual([{ pos: 56, reading: 9638, min: 1457, finished: true }]);
+    expect(parseCalibration(buildFrame(Cmd.CALIBRATION, { sub: Calibration.START }))).toBeNull();
+    expect(parseCalibration(buildFrame(Cmd.TRAVEL_STREAM, { sub: Travel.KEYS }))).toBeNull();
+  });
+
+  it("starts and stops calibration; the stop goes out 3 times", async () => {
+    const { keyboard, sent } = keyboardWith((req) => (req[0] === Cmd.CALIBRATION ? header(req, 0) : null));
+    await keyboard.startCalibration();
+    await keyboard.keepCalibrating();
+    await keyboard.stopCalibration();
+    expect(sent.map((frame) => [frame[0], frame[1]])).toEqual([
+      [0x94, Calibration.START],
+      [0x94, Calibration.START],
+      [0x94, Calibration.STOP],
+      [0x94, Calibration.STOP],
+      [0x94, Calibration.STOP],
+    ]);
+  });
+
+  it("a progress frame doesn't count as the echo of start", async () => {
+    const { keyboard } = keyboardWith((req) =>
+      req[0] === Cmd.CALIBRATION ? [Cmd.CALIBRATION, Calibration.PROGRESS, 0, 1, 0, 6, ...u16(56), ...u16(9000), ...u16(900)] : null,
+    );
+    await expect(keyboard.keepCalibrating()).rejects.toBeInstanceOf(HidTimeoutError);
   });
 
   it("retries and then times out", async () => {

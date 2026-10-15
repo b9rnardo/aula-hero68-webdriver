@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { Icon } from "../components/icons";
 import { hexRgb, KeyboardStage, mixColor } from "../components/KeyboardStage";
-import { Card, ChangedTag, Check, cx, Empty, InfoTip, PageBody, Pill, Seg, SelectionEmpty, Swatch, Title } from "../components/ui";
+import { Card, ChangedTag, cx, Empty, PageBody, Seg, SelectionEmpty, Swatch, Title } from "../components/ui";
 import { POSITIONS } from "../data/layout";
 import { switchById, type SwitchInfo } from "../data/switches";
 import type { KeyboardSnapshot } from "../hid/snapshot";
@@ -10,19 +10,23 @@ import { useI18n } from "../i18n";
 import { sameSet } from "../lib/selection";
 import { useKeyNames } from "../lib/keys";
 import { groupBy } from "../lib/target";
-import { navigate } from "../navigation";
 import { current } from "../store/draft";
+import { useCalibration } from "../store/calibration";
 import { useLive } from "../store/live";
 import { useUi, type SwitchMode } from "../store/ui";
 import { travelOf, useCount, useEditor, useLegend } from "./common";
+import { Calibration, CAL_DONE } from "./Calibration";
 import { LiveTravel } from "./LiveTravel";
 
 const tint = (sw: SwitchInfo | undefined) => (sw ? mixColor(hexRgb(sw.color), 0.32) : undefined);
 const fold = (text: string) => text.toLowerCase();
+const LIVE_FILL = "rgb(164 139 255 / 0.36)";
+/** Calibration only shows the keys; clicking one does nothing. */
+const noPick = () => undefined;
 
-/** Switch type per key goes through the draft; calibration waits for a test on the keyboard; live travel only reads. */
+/** Switch type per key goes through the draft; calibration and live travel talk to the keyboard directly. */
 export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
-  const { t, mm } = useI18n();
+  const { t, mm, number } = useI18n();
   const { draft, edit, selected, writable } = useEditor();
   const legend = useLegend(snapshot);
   const names = useKeyNames();
@@ -30,6 +34,8 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const { mode, setMode, select } = useUi(useShallow((s) => ({ mode: s.switchMode, setMode: s.setSwitchMode, select: s.select })));
   const [query, setQuery] = useState("");
   const live = useLive(useShallow((s) => ({ keys: s.keys, focus: s.focus, pinned: s.pinned, on: s.status === "on", follow: s.follow })));
+  const cal = useCalibration(useShallow((s) => ({ keys: s.keys, ranges: s.ranges, status: s.status })));
+  const calDone = Object.values(cal.keys).filter((key) => key.done).length;
 
   const typeOf = (pos: number) => current.sw(draft, snapshot, pos);
   const swOf = (pos: number) => switchById.get(typeOf(pos) ?? -1);
@@ -40,7 +46,6 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
   const single = types.size === 1 ? switchById.get([...types][0]!) : undefined;
   const compatible = snapshot.features.switchTypes.map((id) => switchById.get(id)).filter((sw): sw is SwitchInfo => !!sw);
   const list = compatible.filter((sw) => fold(sw.name).includes(fold(query.trim())));
-  const autoCalibrate = current.setting(draft, snapshot, "autoCalibrate");
 
   const pick = (sw: SwitchInfo) =>
     edit(`sw.${sw.id}`, (d, snap) => {
@@ -51,6 +56,52 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
         if (act !== undefined && act > sw.travelUm) d.act[pos] = sw.travelUm;
       }
     });
+
+  const calStatus =
+    cal.status === "starting"
+      ? t("cal.starting")
+      : cal.status === "stopping"
+        ? t("cal.stopping")
+        : cal.status === "on" || calDone
+          ? t("cal.progress", { done: number(calDone), total: number(POSITIONS.length) })
+          : t("cal.idle");
+  const liveStatus = !live.on
+    ? t("live.off")
+    : live.focus === null
+      ? t("live.waiting")
+      : t(live.pinned ? "live.pinned" : "live.following", { name: names.name(live.focus) });
+  const legends: Record<SwitchMode, ReactNode> = {
+    type: inUse.map(([id]) => (
+      <span key={id} className="legend">
+        <Swatch color={tint(switchById.get(id)) ?? "var(--color-key)"} />
+        {switchById.get(id)?.name ?? t("sw.unknown", { id })}
+      </span>
+    )),
+    calibration: (
+      <>
+        <span className="legend">
+          <Swatch color={CAL_DONE} />
+          {t("cal.legendDone")}
+        </span>
+        <span className="legend">
+          <Swatch color={LIVE_FILL} />
+          {t("cal.legendDown")}
+        </span>
+      </>
+    ),
+    live: (
+      <>
+        <span className="legend">
+          <Swatch color={LIVE_FILL} />
+          {t("live.travel")}
+        </span>
+        <span className="legend">
+          <Swatch color="rgb(164 139 255 / 0.66)" className="border-accent-light" />
+          {t("live.pressed")}
+        </span>
+      </>
+    ),
+  };
 
   return (
     <>
@@ -70,37 +121,24 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
         }
         values={mode !== "calibration"}
         sameValue={typeOf}
-        pick={mode === "live" ? live.follow : undefined}
-        status={
-          !live.on
-            ? t("live.off")
-            : live.focus === null
-              ? t("live.waiting")
-              : t(live.pinned ? "live.pinned" : "live.following", { name: names.name(live.focus) })
-        }
-        legend={
-          mode === "type"
-            ? inUse.map(([id]) => (
-                <span key={id} className="legend">
-                  <Swatch color={tint(switchById.get(id)) ?? "var(--color-key)"} />
-                  {switchById.get(id)?.name ?? t("sw.unknown", { id })}
-                </span>
-              ))
-            : mode === "live" && (
-                <>
-                  <span className="legend">
-                    <Swatch color="rgb(164 139 255 / 0.36)" />
-                    {t("live.travel")}
-                  </span>
-                  <span className="legend">
-                    <Swatch color="rgb(164 139 255 / 0.66)" className="border-accent-light" />
-                    {t("live.pressed")}
-                  </span>
-                </>
-              )
-        }
+        pick={mode === "live" ? live.follow : mode === "calibration" ? noPick : undefined}
+        status={mode === "calibration" ? calStatus : liveStatus}
+        legend={legends[mode]}
         render={(key) => {
           const sw = swOf(key.pos);
+          if (mode === "calibration") {
+            const now = cal.keys[key.pos];
+            const range = cal.ranges[key.pos];
+            const span = range ? range.max - range.min : 0;
+            // The reading goes down as the key goes down.
+            const down = cal.status === "on" && now && span > 0 ? Math.max(0, Math.min(1, (range.max - now.reading) / span)) : 0;
+            return {
+              legend: legend(key),
+              bg: now?.done ? CAL_DONE : undefined,
+              fill: down,
+              desc: t(now?.done ? "cal.keyDone" : down > 0 ? "cal.keyDown" : "cal.keyRest"),
+            };
+          }
           if (mode === "live") {
             const now = live.keys[key.pos];
             const down = now && now.depthUm >= 50 ? now : undefined;
@@ -212,47 +250,7 @@ export function SwitchPage({ snapshot }: { snapshot: KeyboardSnapshot }) {
           </div>
         )}
 
-        {mode === "calibration" && (
-          <div className="grid2">
-            <Card title={t("sw.calibration")} info={t("sw.calibrationInfo")} aside={<Pill>{t("common.soon")}</Pill>}>
-              <ol className="steps">
-                <li>
-                  <span className="stn">1</span>
-                  {t("sw.cal.step1")}
-                </li>
-                <li>
-                  <span className="stn">2</span>
-                  {t("sw.cal.step2")}
-                </li>
-                <li>
-                  <span className="stn">3</span>
-                  {t("sw.cal.step3")}
-                </li>
-              </ol>
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className="btn pri" disabled>
-                  {t("sw.cal.start")}
-                </button>
-                <span className="cap">{t("sw.cal.notYet")}</span>
-              </div>
-            </Card>
-            <Card label={t("sw.adaptive")}>
-              <div className="check first">
-                <Check checked={autoCalibrate} disabled={!writable} onChange={(on) => edit("set.autoCalibrate", (d) => {
-                      d.set.autoCalibrate = on;
-                    })}>
-                  {t("set.autoCalibrate")}
-                </Check>
-                <InfoTip label={t("info.about", { topic: t("set.autoCalibrate") })}>{t("sw.adaptiveInfo")}</InfoTip>
-                {"autoCalibrate" in draft.set && <ChangedTag className="ml-auto" />}
-              </div>
-              <button type="button" className="lnk" onClick={() => navigate("settings")}>
-                {t("sw.openSettings")}
-                <Icon name="arrow" size="xs" />
-              </button>
-            </Card>
-          </div>
-        )}
+        {mode === "calibration" && <Calibration snapshot={snapshot} />}
 
         {mode === "live" && <LiveTravel snapshot={snapshot} />}
       </PageBody>

@@ -37,7 +37,7 @@
 | **Zonas mortas** no topo e no fundo do curso | ✅ | ✅ |
 | **Tipo de switch** por tecla, entre os modelos que o teclado aceita | ✅ | ✅ |
 | **Curso ao vivo**: quanto cada tecla desceu, cerca de 20 vezes por segundo | ✅ | – |
-| **Calibração** | – | em breve |
+| **Calibração**: aperte cada tecla até o fundo e o teclado aprende o novo topo e fundo dela | ✅ | ✅ |
 | **Mapeamento de teclas** nas camadas principal, Fn e Fn2 | ✅ | ✅ |
 | **Polling rate** de 125 a 8000 Hz | ✅ | ✅ |
 | **Trava Win, modo Mac, debounce e calibração adaptativa** | ✅ | ✅ |
@@ -107,7 +107,7 @@ Nas próximas vezes, o driver reconecta sozinho a um teclado que você já autor
 
 Este é um projeto independente, sem ligação com a AULA. O protocolo foi entendido analisando o driver web oficial.
 
-Cada tipo de gravação foi testado num teclado real antes de ser liberado: muda um valor, relê tudo, confere que só aquele valor mudou e restaura o original. Mesmo assim, **use por sua conta e risco**. Se algo der errado, segure **Fn + Espaço por 5 segundos** para voltar ao padrão de fábrica.
+Cada tipo de gravação foi testado num teclado real antes de ser liberado: muda um valor, relê tudo, confere que só aquele valor mudou e restaura o original. A exceção é a calibração, que não tem como desfazer, só refazer: ela só muda as teclas que você apertar. Mesmo assim, **use por sua conta e risco**. Se algo der errado, segure **Fn + Espaço por 5 segundos** para voltar ao padrão de fábrica.
 
 ## Próximos passos
 
@@ -115,7 +115,7 @@ Cada tipo de gravação foi testado num teclado real antes de ser liberado: muda
 - [x] Gravar atuação, Rapid Trigger e zonas mortas
 - [x] Gravar ajustes gerais e mapeamento de teclas
 - [x] Gravar tipo de switch e iluminação
-- [ ] Calibração
+- [x] Calibração
 - [ ] Gravar perfis
 - [ ] Gravar teclas avançadas e macros
 
@@ -161,6 +161,7 @@ Valores de vários bytes são big-endian. O comando de leitura é o de escrita c
 | `0x15` | tipo de switch |
 | `0x16` | zonas mortas |
 | `0x19` | Rapid Trigger |
+| `0x94` | calibração: início, fim e a faixa de cada tecla |
 | `0x98` | curso ao vivo (só leitura) |
 
 A análise completa, com cada frame validado, está em [`docs/analise.md`](docs/analise.md).

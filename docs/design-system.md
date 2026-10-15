@@ -20,7 +20,7 @@ Onde está cada coisa:
 
 ## 1. Princípios
 
-1. **Nada vai para o teclado sem passar pela barra de gravação.** Toda mudança entra no rascunho (`useDraft.edit`), aparece com um ponto violeta e só é gravada em "Gravar no teclado" (ou Ctrl/⌘ S).
+1. **Nada vai para o teclado sem passar pela barra de gravação.** Toda mudança entra no rascunho (`useDraft.edit`), aparece com um ponto violeta e só é gravada em "Gravar no teclado" (ou Ctrl/⌘ S). A exceção é a calibração: ela é uma ação feita junto com o teclado, começa e termina por um botão no próprio card e não passa pelo rascunho.
 2. **Switch (interruptor) só para preferências do app.** Ajustes do teclado usam caixa de seleção (`Check`) ou controle segmentado (`Seg`). Assim fica claro o que é do navegador e o que é do teclado.
 3. **Desfazer em vez de pedir confirmação.** Nada de "Tem certeza?". A ação acontece e o aviso rápido oferece "Desfazer". Ctrl/⌘ Z também desfaz.
 4. **Avisos ficam junto do que explicam.** Um risco aparece como `Note` dentro do card do ajuste. Só o sucesso (e o "Desfazer") vira aviso rápido no canto. Erros de gravação também aparecem no canto, porque não têm um card só deles.
@@ -153,7 +153,7 @@ Cada página é registrada em `src/navigation.ts` (`page(id, icon, needsData, st
 - Card da esquerda (`grid2` é 1,3 : 1): o editor da seleção. Card da direita: diagrama ou gráfico e "Valores em uso".
 - Os três estados do card de edição, sempre nesta ordem: **não lido** (`Empty`) → **nada selecionado** (`SelectionEmpty`) → **editor**.
 - Seletor de camada ou modo vai em `extra` do `KeyboardStage`, como `Seg`.
-- **Teclado que só aponta uma tecla** (curso ao vivo): passe `pick={(pos) => …}` e `status`. O clique escolhe a tecla em vez de selecionar, e somem os atalhos de seleção e a legenda "Não gravada". A tecla escolhida vem com `on: true` no `render`; `fill` (0–1) e `hot` desenham quanto a tecla desceu e se está acionada.
+- **Teclado que só aponta uma tecla** (curso ao vivo): passe `pick={(pos) => …}` e `status`. Para um teclado que só mostra (calibração), passe um `pick` que não faz nada. O clique escolhe a tecla em vez de selecionar, e somem os atalhos de seleção e a legenda "Não gravada". A tecla escolhida vem com `on: true` no `render`; `fill` (0–1) e `hot` desenham quanto a tecla desceu e se está acionada.
 
 ### Página sem teclado (ajustes gerais)
 
@@ -217,9 +217,11 @@ Traço 24×24 em `icons.tsx`, `stroke-width` 1,75, pontas arredondadas. Tamanhos
 3. Adicione o tipo no `Draft`, em `normalize`, em `pendingOf` e um passo em `save()` com rótulo `save.step.<tipo>`.
 4. Até lá, a página fica `readOnly` com `ReadOnlyPill`.
 
-Continua **desligada** até haver validação no hardware: a calibração (0x94). Perfis, teclas avançadas e macros seguem só leitura. A iluminação (luzes principal e lateral e cores por tecla) está liberada.
+Perfis, teclas avançadas e macros seguem só leitura. A iluminação (luzes principal e lateral e cores por tecla) e a calibração estão liberadas.
 
 O curso ao vivo (0x98) está liberado: ele só lê e não muda ajuste nenhum. Regras dele (`src/store/live.ts`): no máximo 9 teclas por pedido (28 fizeram o teclado reiniciar); o modo de medição começa por um botão e termina sozinho ao sair da aba, esconder a página, desconectar, reler ou gravar, sempre mandando a saída antes de qualquer gravação.
+
+A calibração (0x94) está liberada e segue as mesmas regras de início e fim (`src/store/calibration.ts`): começa por um botão, termina em "Concluir" ou sozinha ao trocar de modo ou de página, esconder a aba, desconectar, reler ou gravar. Enquanto calibra, a página ignora o teclado (para as teclas apertadas não rolarem a página nem acionarem botões). Ao concluir, relê a faixa das teclas que terminaram e confere com o que o teclado informou. Ela não tem como ser desfeita, só refeita.
 
 ## 9. Textos (i18n)
 

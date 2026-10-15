@@ -82,7 +82,7 @@ Vários modelos usam o mesmo VID/PID: HERO 68 AIR, MINI, NEO, WIN68HE Ultra, JIS
 | `0x16` | perfil | zonas mortas | `pos u16, topo u16, fundo u16, global u8, ativo u8` |
 | `0x19` | perfil | Rapid Trigger | `pos u16, ativo u8, pressionar u16, soltar u16, global u8` |
 | `0x1A` | perfil | nome do perfil | `tamanho, utf8…` |
-| `0x94` | `0x00`/`0x04` | iniciar/parar calibração | o início é reenviado a cada 1 s |
+| `0x94` | `0x00`/`0x04` | iniciar/parar calibração | o início é reenviado a cada 1 s; o fim, 3 vezes |
 | `0x98` | `0x00`/`0x01`/`0x02` | curso ao vivo: iniciar / lista de teclas / sair | – |
 
 ### 2.4 Comandos de leitura
@@ -111,7 +111,7 @@ Vários modelos usam o mesmo VID/PID: HERO 68 AIR, MINI, NEO, WIN68HE Ultra, JIS
 Quirk: o `fetch_sleep_level` oficial envia uma escrita (`0x04/0x13`) com o valor atual e lê a resposta como `0x84`.
 
 **Mensagens que o teclado envia sozinho (input report 9):**
-- `[0]=0x94, [1]=0x02`: progresso da calibração. São 6 bytes por tecla: `pos, atual (bit 15 = pressionada), mínimo`.
+- `[0]=0x94, [1]=0x02`: progresso da calibração. São 6 bytes por tecla: `pos, leitura, menor leitura`. O bit 15 da leitura fica ligado enquanto a tecla calibra e desligado só no frame em que ela volta ao topo depois de chegar ao fundo (ver seção 5).
 - `[0]=0x98, [1]=0x01`: curso ao vivo. São 6 bytes por tecla: `pos, distância, AD (bit 15 = pressionada)`. Serve para um visualizador de curso em tempo real.
 - `[0]=0xFE, [1]=0x05`: bateria (só wireless).
 - Pacote de 19 bytes com `[4]=2`: teclado conectou ou desconectou.
@@ -406,6 +406,28 @@ Leitura completa feita com o código do app (`readSnapshot`) por node-hid. O tec
 - As cores por tecla aparecem só no efeito Personalizado (19), mas ficam gravadas nos outros.
 - Na tela oficial, o brilho fica desligado no efeito desligado, e a velocidade no desligado e no Personalizado. A cor não vale no desligado, no Personalizado e no Neon da luz principal. Escolher uma cor desliga o arco-íris. O app segue isso e também trava a velocidade no efeito Fixo.
 - No app, cada luz e as cores das teclas são relidas depois de gravar. As cores são gravadas antes do efeito, para o Personalizado já aparecer com elas.
+
+**Calibração (`0x94`), validada**
+- **Faixa (`94 05`):** `94 05 00 01 00 len` com as posições (`pos u16`), até 9 por pedido. A resposta traz 6 bytes por tecla: `[pos u16, máx u16, mín u16]`. O máx é a leitura do sensor com a tecla em cima e o mín com ela no fundo: a leitura cai quando a tecla desce. Antes do teste, o máx ia de 8263 a 10262 e o mín de 318 a 1687.
+- **Início (`94 00`):** o teclado ecoa. O driver oficial reenvia o início a cada 1 s enquanto calibra, e cada reenvio também é ecoado.
+- **Progresso (`94 02`):** chega sozinho, uma tecla por frame, a cada 50 ms, e só das teclas que já desceram. A sequência da tecla Z foi:
+  - ao descer, bit 15 ligado, com a leitura caindo de 1508 até 1457 e o mínimo acompanhando;
+  - ao voltar ao topo, um frame com o bit 15 desligado, leitura 9638 e mínimo 1457: é quando a tecla termina;
+  - depois disso a tecla segue sendo informada com o bit 15 ligado, em repouso.
+  O driver oficial marca a tecla como pronta no primeiro frame com o bit 15 desligado e não desmarca mais.
+- **Fim (`94 04`):** o teclado ecoa. O driver oficial manda 3 vezes, com 100 ms entre elas.
+- O driver oficial não tem como gravar a faixa: o `sync_calibrate_ad` dele não faz nada. Não há como desfazer, só calibrar de novo.
+- Teste com o dono apertando Z, X e C até o fundo, uma de cada vez:
+  - Z foi de 9640/1632 para 9638/1457 (máx/mín), X de 9315/597 para 9311/493 e C de 9088/959 para 9085/865. O novo mín é o menor valor informado no progresso, e o novo máx é a leitura do frame que terminou a tecla;
+  - o mín das outras 65 teclas não mudou. O máx de 7 delas caiu 5 pontos, mas isso é a calibração adaptativa (ligada no teclado): entre duas leituras sem calibrar, 34 teclas já tinham variado de 5 a 10 pontos no máx;
+  - a leitura completa (`readSnapshot`) ficou igual antes e depois: atuação, Rapid Trigger, zonas mortas, tipo de switch, mapeamento, luzes e ajustes.
+- No app:
+  - lê a faixa das 68 teclas, entra na calibração e reenvia o início a cada 1 s;
+  - pinta de verde as teclas que terminaram;
+  - sai ao clicar em Concluir, ao trocar de modo ou de página, ao esconder a aba, ao desconectar, ao reler ou antes de qualquer gravação;
+  - ao concluir, relê a faixa das teclas que terminaram e confere se o mín é o que o teclado informou;
+  - enquanto calibra, a página ignora o teclado, para as teclas apertadas não rolarem a página nem acionarem botões;
+  - os frames de progresso ficam fora do registro de pacotes.
 
 **Ainda não confirmado**
 1. Se a atuação, o Rapid Trigger, as zonas mortas e o mapeamento gravados continuam depois de desconectar o cabo. O driver oficial não manda comando de salvar, então devem continuar. O polling já continua depois da reconexão.

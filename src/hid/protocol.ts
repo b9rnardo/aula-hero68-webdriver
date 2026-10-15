@@ -54,6 +54,17 @@ export const Travel = {
   EXIT: 0x02,
 } as const;
 
+/** Sub-commands of Cmd.CALIBRATION. */
+export const Calibration = {
+  /** Enters calibration; the official driver sends it again every second while calibrating. */
+  START: 0x00,
+  /** Sub of the progress frames the keyboard sends while calibrating. */
+  PROGRESS: 0x02,
+  STOP: 0x04,
+  /** Reads each key's sensor range. */
+  RANGE: 0x05,
+} as const;
+
 /** Setting ids shared by Cmd.SET_CONFIG (write) and Cmd.GET_CONFIG (read). */
 export const Config = {
   LIGHT: 0x01,
